@@ -298,52 +298,40 @@ class DataManager {
 
     // ВСЕГДА фильтруем по лимитам
     if (filters.limits) {
-        let filteredHands = this.hands;
-        
-        if (filters.limits.length === 0) {
-            filteredHands = [];  // Если ничего не выбрано - не показываем ничего
-        } else {
-            filteredHands = this.hands.filter(hand => {
-                const limit = 'NL' + hand.limit;
-                return filters.limits.includes(limit);
+    let filteredHands = this.hands;
+    
+    if (filters.limits === null) {
+        // "Все" выбрано - показываем все с героем
+        filteredHands = this.hands.filter(hand => {
+            return hand.players && hand.players.some(p => p.name === this.heroNick || this.aliases.includes(p.name));
+        });
+    } else if (filters.limits.length === 0) {
+        // Ничего не выбрано - пусто
+        filteredHands = [];
+    } else {
+        // Фильтруем по лимитам И по герою
+        filteredHands = this.hands.filter(hand => {
+            const hasHero = hand.players && hand.players.some(p => p.name === this.heroNick || this.aliases.includes(p.name));
+            if (!hasHero) return false;
+            
+            const limit = 'NL' + hand.limit;
+            return filters.limits.includes(limit);
+        });
+    }
+
+    const tempCalculator = new StatsCalculator();
+    for (const hand of filteredHands) {
+        const player = hand.players.find(p => p.name === this.heroNick || this.aliases.includes(p.name));
+        if (player) {
+            const result = calculateResult(hand.players, this.heroNick);
+            tempCalculator.addHand({
+                ...hand,
+                result: result
             });
         }
-
-        const tempCalculator = new StatsCalculator();
-        for (const hand of filteredHands) {
-            const player = hand.players.find(p => p.name === this.heroNick || this.aliases.includes(p.name));
-            if (player) {
-                const result = calculateResult(hand.players, this.heroNick);
-                tempCalculator.addHand({
-                    ...hand,
-                    result: result
-                });
-            }
-        }
-        stats = tempCalculator.getStats(breakMinutes);
     }
-
-    if (filters.startDate && filters.endDate) {
-        const start = new Date(filters.startDate);
-        const end = new Date(filters.endDate);
-        const filteredHands = this.hands.filter(hand => {
-            const date = new Date(hand.startDate);
-            return date >= start && date <= end;
-        });
-
-        const tempCalculator = new StatsCalculator();
-        for (const hand of filteredHands) {
-            const player = hand.players.find(p => p.name === this.heroNick || this.aliases.includes(p.name));
-            if (player) {
-                const result = calculateResult(hand.players, this.heroNick);
-                tempCalculator.addHand({
-                    ...hand,
-                    result: result
-                });
-            }
-        }
-        stats = tempCalculator.getStats(breakMinutes);
-    }
+    stats = tempCalculator.getStats(breakMinutes);
+}
 
     return stats;
 }

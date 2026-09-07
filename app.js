@@ -38,6 +38,15 @@ async function initApp() {
 
     try {
         AppState.dataManager = new DataManager();
+        
+        // 📥 Загружаем сохранённые даты в самом начале, до настройки UI и событий
+        const savedDateStart = localStorage.getItem('pokerDateStart');
+        const savedDateEnd = localStorage.getItem('pokerDateEnd');
+        if (savedDateStart && savedDateEnd) {
+            AppState.dateStart = savedDateStart;
+            AppState.dateEnd = savedDateEnd;
+        }
+
         loadSettings();
         
         const loaded = await AppState.dataManager.loadHands();
@@ -53,7 +62,7 @@ async function initApp() {
         }
 
         updateLimitFilter();
-        setupEvents();
+        setupEvents(); // Внутри setupEvents ваш код инициализации Flatpickr подхватит эти даты корректно
         updateUI();
         initChart();
 
@@ -414,7 +423,7 @@ if (progressStats) {
     AppState.dataManager.updateSettings({ timezoneOffset: offset });
     updateUI();
     updateChart();
-    uupdateDayList(getSelectedLimits());
+    updateDayList(getSelectedLimits());  // ✅ Правильно!
 });
 
     // Загружаем сохранённое значение
@@ -445,37 +454,100 @@ if (savedOffset !== undefined) {
         hideProgress();
     });
 
-    // Инициализация Flatpickr для выбора диапазона дат
-flatpickr("#dateRange", {
-    mode: "range",
-    dateFormat: "Y-m-d",
-    onChange: function(selectedDates, dateStr) {
-        if (selectedDates.length === 2) {
-            AppState.dateStart = selectedDates[0].toISOString().split('T')[0];
-            AppState.dateEnd = selectedDates[1].toISOString().split('T')[0];
-            document.getElementById('dateRange').value = dateStr;
-            updateChart();
-            updateDayList();
-            updateUI();
-        } else if (selectedDates.length === 0) {
-            AppState.dateStart = null;
-            AppState.dateEnd = null;
-            document.getElementById('dateRange').value = '';
-            updateChart();
-            updateDayList();
-            updateUI();
+    // Инициализация Flatpickr для выбора диапазона дат (Полная изоляция от часовых поясов ПК)
+    flatpickr("#dateRange", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        // Передаем строго текстовые строки, запрещая Flatpickr неявно вызывать конструктор new Date() по UTC
+        defaultDate: (AppState.dateStart && AppState.dateEnd) ? [AppState.dateStart, AppState.dateEnd] : null,
+        onChange: function(selectedDates, dateStr, instance) {
+            // Выполняем фильтрацию только когда пользователь выбрал обе границы диапазона
+            if (selectedDates.length === 2) {
+                // Извлекаем чистые текстовые строки формата YYYY-MM-DD напрямую из инпута плагина
+                const dates = dateStr.split(" to ");
+                AppState.dateStart = dates[0];
+                AppState.dateEnd = dates[1];
+                
+                document.getElementById('dateRange').value = dateStr;
+                
+                // Сохраняем в localStorage чистый текст, соответствующий датам из архивов раздач
+                localStorage.setItem('pokerDateStart', AppState.dateStart);
+                localStorage.setItem('pokerDateEnd', AppState.dateEnd);
+                
+                updateChart();
+                updateDayList();
+                updateUI();
+            } else if (selectedDates.length === 0) {
+                // Корректно обрабатываем полное очищение фильтра (клик по крестику)
+                AppState.dateStart = null;
+                AppState.dateEnd = null;
+                document.getElementById('dateRange').value = '';
+                
+                localStorage.removeItem('pokerDateStart');
+                localStorage.removeItem('pokerDateEnd');
+                
+                updateChart();
+                updateDayList();
+                updateUI();
+            }
         }
+    });
+
+    // Установка текстового значения в инпут при загрузке страницы (без создания объектов Date)
+    if (AppState.dateStart && AppState.dateEnd) {
+        document.getElementById('dateRange').value = AppState.dateStart + ' to ' + AppState.dateEnd;
     }
-});
+
+    // Обработчик кнопки ручного сброса фильтра дат
+    document.getElementById('clearDateFilter').addEventListener('click', function() {
+        AppState.dateStart = null;
+        AppState.dateEnd = null;
+        document.getElementById('dateRange').value = '';
+        
+        localStorage.removeItem('pokerDateStart');
+        localStorage.removeItem('pokerDateEnd');
+        
+        // Начисто сбрасываем внутреннее визуальное состояние самого виджета календаря
+        const fp = document.querySelector('#dateRange')._flatpickr;
+        if (fp) {
+            fp.clear();
+        }
+        
+        updateChart();
+        updateDayList(getSelectedLimits());
+        updateUI();
+    });
+
+// Устанавливаем сохранённое значение в поле и календаре
+if (AppState.dateStart && AppState.dateEnd) {
+    document.getElementById('dateRange').value = AppState.dateStart + ' to ' + AppState.dateEnd;
+    
+    // Обновляем Flatpickr
+    const fp = document.querySelector('#dateRange')._flatpickr;
+    if (fp) {
+        fp.setDate([AppState.dateStart, AppState.dateEnd], true);
+    }
+}
 
 document.getElementById('clearDateFilter').addEventListener('click', function() {
-    AppState.dateStart = null;
-    AppState.dateEnd = null;
-    document.getElementById('dateRange').value = '';
-    updateChart();
-    updateDayList(getSelectedLimits());
-    updateUI();
-});
+        AppState.dateStart = null;
+        AppState.dateEnd = null;
+        
+        // Явно очищаем поле и localStorage
+        document.getElementById('dateRange').value = '';
+        localStorage.removeItem('pokerDateStart');
+        localStorage.removeItem('pokerDateEnd');
+        
+        // Сбрасываем сам плагин календаря
+        const fp = document.querySelector('#dateRange')._flatpickr;
+        if (fp) {
+            fp.clear(); 
+        }
+        
+        updateChart();
+        updateDayList(getSelectedLimits());
+        updateUI();
+    });
 }
 
 // Обработка изменения чекбоксов лимитов
@@ -873,33 +945,13 @@ function closeAllModals() {
 
 function updateUI() {
     const selectedLimits = getSelectedLimits();
-    const offset = AppState.dataManager.settings.timezoneOffset || 0;
     
-    // Получаем все руки
-    let allHands = AppState.dataManager.hands;
+    // Получаем финальный массив рук, отфильтрованный по датам, лимитам и игроку
+    const filteredHands = filterHands(AppState.dataManager.hands);
     
-    // Фильтруем по датам с учетом выбранного часового пояса
-    if (AppState.dateStart) {
-        const start = new Date(AppState.dateStart);
-        start.setHours(0, 0, 0, 0);
-        allHands = allHands.filter(h => {
-            const corrected = new Date(h.startDate);
-            corrected.setHours(corrected.getHours() + offset);
-            return corrected >= start;
-        });
-    }
-    if (AppState.dateEnd) {
-        const end = new Date(AppState.dateEnd);
-        end.setHours(23, 59, 59, 999);
-        allHands = allHands.filter(h => {
-            const corrected = new Date(h.startDate);
-            corrected.setHours(corrected.getHours() + offset);
-            return corrected <= end;
-        });
-    }
+    // Передаем руки в getStats БЕЗ ключа limits, чтобы DataManager не сбрасывал фильтр дат
+    const stats = AppState.dataManager.getStats({ hands: filteredHands });
     
-    // Получаем статистику с учётом фильтров
-    const stats = AppState.dataManager.getStats({ limits: selectedLimits, hands: allHands });
     updateWidgets(stats);
     updateDayList(selectedLimits);
 }
@@ -1016,6 +1068,10 @@ function convertCurrency(amount) {
 // ОБНОВЛЕНИЕ СПИСКА ДНЕЙ
 // ============================================================
 
+// ============================================================
+// ОБНОВЛЕНИЕ СПИСКА ДНЕЙ
+// ============================================================
+
 function updateDayList(selectedLimits = []) {
     const days = AppState.dataManager.getDays({
         dayStartHour: AppState.dataManager.settings.dayStartHour,
@@ -1023,16 +1079,13 @@ function updateDayList(selectedLimits = []) {
         limits: selectedLimits
     });
 
-    // Фильтрация по датам
+    // ✅ Заменяем только этот блок на чистое строковое сравнение:
     let filteredDays = days;
     if (AppState.dateStart) {
-        const start = new Date(AppState.dateStart);
-        filteredDays = filteredDays.filter(day => new Date(day.day) >= start);
+        filteredDays = filteredDays.filter(day => day.day >= AppState.dateStart);
     }
     if (AppState.dateEnd) {
-        const end = new Date(AppState.dateEnd);
-        end.setHours(23, 59, 59);
-        filteredDays = filteredDays.filter(day => new Date(day.day) <= end);
+        filteredDays = filteredDays.filter(day => day.day <= AppState.dateEnd);
     }
 
     const container = document.getElementById('dayList');
@@ -1111,28 +1164,28 @@ function updateDayList(selectedLimits = []) {
     const header = document.getElementById('dayListHeader');
     if (header) {
         header.addEventListener('click', function() {
-            // Собираем данные
-            const rows = [];
+    const rows = [];
+    
+    for (const day of filteredDays) {
+        // Средний лимит с точностью до сотых
+        const avgLimit = (day.totalHands > 0 ? 
+            (day.hands.reduce((sum, h) => sum + h.limit, 0) / day.totalHands) : 0
+        ).toFixed(2).replace('.', ',');
+        
+        const timeMinutes = (day.totalTime / 60).toFixed(2).replace('.', ',');
+        
+        rows.push([
+            avgLimit,  // ← Теперь с точностью до сотых (например, 5,50)
+            day.totalHands,
+            timeMinutes
+        ]);
+    }
             
-            for (const day of filteredDays) {
-                const avgLimit = calculateAverageLimitForDay(day);
-                const timeMinutes = (day.totalTime / 60).toFixed(2).replace('.', ',');
-                
-                rows.push([
-                    avgLimit,
-                    day.totalHands,
-                    timeMinutes
-                ]);
-            }
-            
-            // Создаем TSV (Tab Separated Values) для Google Sheets
             const tsv = rows.map(row => row.join('\t')).join('\n');
             
-            // Копируем в буфер обмена
             navigator.clipboard.writeText(tsv).then(function() {
                 showNotification('✅ Данные скопированы!', 'success');
             }).catch(function() {
-                // Фолбэк для старых браузеров
                 const textarea = document.createElement('textarea');
                 textarea.value = tsv;
                 document.body.appendChild(textarea);
@@ -1259,14 +1312,18 @@ function initChart() {
             scales: {
                 x: { grid: { display: false } },
                 y: {
-                    grid: { color: 'rgba(0,0,0,0.05)' },
-                    ticks: {
-                        callback: function(value) {
-                            const currencySymbol = getCurrencySymbol();
-                            return (value < 0 ? '-' : '') + currencySymbol + Math.abs(value);
-                        }
-                    }
-                }
+    grid: {
+        color: 'rgba(0,0,0,0.05)'
+    },
+    ticks: {
+        precision: 2,
+        callback: function(value) {
+            const currencySymbol = getCurrencySymbol();
+            // Простое форматирование без лишних нулей
+            return (value < 0 ? '-' : '') + currencySymbol + Math.abs(value).toFixed(2);
+        }
+    }
+}
             }
         }
     });
@@ -1275,15 +1332,20 @@ function initChart() {
 }
 
 function updateChart() {
-    if (!AppState.chart) return;
+    // ✅ ЖЕЛЕЗОБЕТОННЫЙ ПРЕДОХРАНИТЕЛЬ: Если график ещё не инициализирован в initChart, выходим без ошибок
+    if (!AppState.chart || typeof AppState.chart.update !== 'function') return;
 
     const hands = AppState.dataManager.hands;
     const filteredHands = filterHands(hands);
 
+    // Безопасный сброс анимаций и очистка холста при нулевом результате
     if (filteredHands.length === 0) {
         AppState.chart.data.labels = [];
-        AppState.chart.data.datasets[0].data = [];
-        AppState.chart.update();
+        if (AppState.chart.data.datasets && AppState.chart.data.datasets[0]) {
+            AppState.chart.data.datasets[0].data = [];
+        }
+        AppState.chart.stop(); // Останавливаем текущие анимации рендера, предотвращая баг мерцания
+        AppState.chart.update('none'); // Обновляем холст мгновенно без анимационных переходов
         return;
     }
 
@@ -1300,36 +1362,48 @@ function updateChart() {
         return sum + (player ? calculateResult(h.players, hero) : 0);
     }, 0);
     
-    // КОНВЕРТИРУЕМ
     const convertedTotalResult = convertCurrency(totalResult);
     
-    
+    // Динамическое изменение бэкграунда зоны под графиком (зеленый/красный в зависимости от сессии)
     AppState.chart.data.datasets[0].backgroundColor = convertedTotalResult > 0 ? 'rgba(72, 187, 120, 0.1)' : convertedTotalResult < 0 ? 'rgba(252, 129, 129, 0.1)' : 'rgba(66, 153, 225, 0.1)';
     AppState.chart.data.datasets[0].pointBackgroundColor = AppState.chart.data.datasets[0].data.map(value => 
-    value < 0 ? '#fc8181' : '#48bb78'
-);
+        value < 0 ? '#fc8181' : '#48bb78'
+    );
     
     AppState.chart.update();
 }
 
 function filterHands(hands) {
     let filtered = [...hands];
+    const offset = AppState.dataManager.settings.timezoneOffset || 0;
+    const dayStartHour = AppState.dataManager.settings.dayStartHour || 6;
 
+    // 1. Фильтр по начальной дате (строковое сравнение ключей)
     if (AppState.dateStart) {
-        const start = new Date(AppState.dateStart);
-        filtered = filtered.filter(h => new Date(h.startDate) >= start);
+        filtered = filtered.filter(h => {
+            const correctedDate = new Date(h.startDate);
+            correctedDate.setHours(correctedDate.getHours() + offset);
+            const dayKey = AppState.dataManager.getDayKey(correctedDate, dayStartHour);
+            return dayKey >= AppState.dateStart;
+        });
     }
 
+    // 2. Фильтр по конечной дате (строковое сравнение ключей)
     if (AppState.dateEnd) {
-        const end = new Date(AppState.dateEnd);
-        end.setHours(23, 59, 59);
-        filtered = filtered.filter(h => new Date(h.startDate) <= end);
+        filtered = filtered.filter(h => {
+            const correctedDate = new Date(h.startDate);
+            correctedDate.setHours(correctedDate.getHours() + offset);
+            const dayKey = AppState.dataManager.getDayKey(correctedDate, dayStartHour);
+            return dayKey <= AppState.dateEnd;
+        });
     }
 
+    // 3. Фильтр по лимитам (чекбоксы)
     const limitContainer = document.getElementById('limitFilter');
-    const allCheckbox = limitContainer.querySelector('input[value="all"]');
+    const allCheckbox = limitContainer ? limitContainer.querySelector('input[value="all"]') : null;
     
-    if (!allCheckbox.checked) {
+    // Если контейнера или чекбокса еще нет на экране, пропускаем фильтрацию лимитов
+    if (allCheckbox && !allCheckbox.checked) {
         const checkedLimits = Array.from(limitContainer.querySelectorAll('input[type="checkbox"]:checked'))
             .map(cb => cb.value)
             .filter(v => v !== 'all');
@@ -1341,6 +1415,7 @@ function filterHands(hands) {
         }
     }
 
+    // 4. Фильтр по выбранному игроку (Hero) и его алиасам
     const hero = document.getElementById('playerSelect').value;
     if (hero) {
         const aliases = AppState.dataManager.aliases || [];
@@ -1351,6 +1426,7 @@ function filterHands(hands) {
 
     return filtered;
 }
+
 
 function getSelectedLimits() {
     const limitContainer = document.getElementById('limitFilter');
@@ -1385,7 +1461,7 @@ function updateChartByHands(hands) {
 
         labels.push(String(i + 1));
         // Конвертируем в выбранную валюту ТОЛЬКО финальную точку перед выводом на график
-        data.push(convertCurrency(cumulative));
+        data.push(parseFloat(convertCurrency(cumulative).toFixed(2)));
     }
 
     AppState.chart.data.labels = labels;
@@ -1399,17 +1475,16 @@ function updateChartByDays(hands) {
     const hero = document.getElementById('playerSelect').value;
     const aliases = AppState.dataManager.aliases || [];
     
-    const dayStartHour = AppState.dataManager.settings.dayStartHour || 0;
+    // Синхронизируем дефолтное начало дня (6 утра) с DataManager
+    const dayStartHour = AppState.dataManager.settings.dayStartHour !== undefined ? AppState.dataManager.settings.dayStartHour : 6;
 
     for (const hand of hands) {
         const player = hand.players.find(p => p.name === hero || aliases.includes(p.name));
         if (!player) continue;
 
-        // Корректируем дату по таймзоне
         const correctedDate = new Date(hand.startDate);
         correctedDate.setHours(correctedDate.getHours() + (AppState.dataManager.settings.timezoneOffset || 0));
         
-        // Получаем ключ дня с учетом "Начала дня" (например, 06:00) через DataManager
         const dayKey = AppState.dataManager.getDayKey(correctedDate, dayStartHour);
         
         if (!days[dayKey]) {
@@ -1425,11 +1500,11 @@ function updateChartByDays(hands) {
     const labels = sortedDays.map(d => formatDate(d));
     const data = [];
     
-    // Считаем кумулятивный (нарастающий) итог по дням, чтобы график шел вверх/вниз корректно
+    // Считаем нарастающий итог в базовой валюте, а конвертируем ТОЛЬКО при выводе
     let cumulative = 0;
     for (const d of sortedDays) {
-        cumulative += convertCurrency(days[d].result);
-        data.push(cumulative);
+        cumulative += days[d].result; // Накапливаем чистые EUR
+        data.push(parseFloat(convertCurrency(cumulative).toFixed(2))); // Конвертируем финальное значение
     }
 
     AppState.chart.data.labels = labels;
@@ -1466,6 +1541,8 @@ function saveCurrencyRates() {
     };
 
     AppState.dataManager.updateSettings({ currencyRates: rates });
+    updateUI();
+    updateChart();
 }
 
 async function fetchExchangeRates() {
