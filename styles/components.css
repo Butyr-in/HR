@@ -653,6 +653,7 @@ input[type="number"] {
 /* ===== Progress ===== */
 .progress-container {
   margin-top: 20px;
+  margin-bottom: 20px;
   padding: 20px;
   background: var(--bg-input);
   border-radius: 12px;
@@ -732,15 +733,19 @@ input[type="number"] {
   font-size: 14px;
   color: var(--text-secondary);
   margin-bottom: 8px;
+  text-align: center;
 }
 
 .progress-stats {
   display: flex;
+  justify-content: center;
   gap: 20px;
   font-size: 14px;
   flex-wrap: wrap;
   padding-top: 12px;
   border-top: 1px solid var(--border-color);
+  margin-top: 25px;
+  margin-bottom: 25px;
 }
 
 .progress-stats span {
@@ -1002,10 +1007,6 @@ input[type="number"] {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.day-list-header {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
 .day-list-header span {
   text-align: center;
 }
@@ -1052,19 +1053,21 @@ input[type="number"] {
 
 /* ===== Day Sessions ===== */
 .day-sessions {
-  background: var(--bg-primary);  /* Был var(--bg-secondary) */
-  padding: 0 16px 8px 16px;
+  background: var(--bg-primary);
+  padding: 4px 0 8px 0px;
+  border-top: 2px solid var(--border-color);
 }
 
 .session-item {
   display: grid;
+  /* Используем точно такую же пропорциональную пятиколоночную сетку, как у дней */
   grid-template-columns: 1.0fr 1.0fr 1.0fr 1.0fr 1fr;
-  padding: 3px 0px;
+  padding: 5px 12px;
   align-items: center;
   background: var(--bg-card);
-  font-size: 13px;  /* Тот же размер, что и дни */
-  margin: 4px 0;
-  border-radius: 6px;
+  font-size: 13px;
+  margin: 4px 4px; /* Боковые зазоры */
+  border-bottom: 1px solid var(--border-color); /* Вместо толстой рамки делаем элегантный разделитель */
 }
 
 .session-item:hover {
@@ -1073,7 +1076,6 @@ input[type="number"] {
 
 .session-item > span {
   text-align: center;
-  font-size: 13px;  /* Тот же размер */
 }
 
 .session-item > span:first-child {
@@ -1082,6 +1084,12 @@ input[type="number"] {
 
 .session-item > span:last-child {
   text-align: right;
+}
+
+/* ✅ ИСПРАВЛЕНО: Принудительно красим в серый цвет второй элемент (Лимит) и четвертый элемент (Длительность) */
+.session-item > span:nth-child(2),
+.session-item > span:nth-child(4) {
+  color: var(--text-secondary);
 }
 
 .session-time {
@@ -1095,6 +1103,7 @@ input[type="number"] {
 .session-result {
   font-weight: 600;
 }
+
 
 #aliasInput {
     width: 100%;
@@ -1155,4 +1164,215 @@ body {
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+}
+
+/* ===== Flatpickr Calendar ===== */
+.flatpickr-calendar {
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 12px !important;
+    box-shadow: var(--shadow-md) !important;
+    font-family: 'Roboto', sans-serif !important;
+}
+
+.flatpickr-day {
+    color: var(--text-primary) !important;
+    border-radius: 6px !important;
+}
+
+.flatpickr-day:hover {
+    background: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
+    border-radius: 50% !important;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange,
+.flatpickr-day.selected:hover {
+    background: var(--color-accent) !important;
+    border-color: var(--color-accent) !important;
+    color: white !important;
+    box-shadow: none !important;
+    border-radius: 50% !important;
+}
+
+.flatpickr-day.today {
+    border-color: var(--color-accent) !important;
+    border-radius: 50% !important;
+}
+
+.flatpickr-day.today:hover {
+    background: var(--color-accent) !important;
+    color: white !important;
+}
+
+.flatpickr-day.inRange {
+    background: rgba(66, 153, 225, 0.15) !important;
+    color: var(--text-primary) !important;
+    box-shadow: none !important;
+    border-radius: 50% !important;
+}
+
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay {
+    color: var(--text-muted) !important;
+    opacity: 0.5 !important;
+}
+
+/* Шапка календаря и контейнер месяцев */
+.flatpickr-months {
+    background: var(--bg-secondary) !important;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.flatpickr-months .flatpickr-month {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    fill: var(--text-primary) !important;
+}
+
+/* ✅ ИСПРАВЛЕНО: Стилизуем непосредственно сам выпадающий список месяцев и его элементы */
+.flatpickr-monthDropdown-months {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    font-family: 'Roboto', sans-serif !important;
+    font-weight: 600 !important;
+    border: none !important;
+    outline: none !important;
+    cursor: pointer !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+}
+
+.flatpickr-monthDropdown-months:hover {
+    background: var(--bg-hover) !important;
+}
+
+/* ✅ ИСПРАВЛЕНО: Стилизуем выпадающие пункты (options) для Chromium-браузеров */
+.flatpickr-monthDropdown-months .flatpickr-monthDropdown-month {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+.flatpickr-current-month {
+    color: var(--text-primary) !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+}
+
+.flatpickr-current-month input.cur-year {
+    color: var(--text-primary) !important;
+}
+
+/* Стрелочки переключения месяцев */
+.flatpickr-months .flatpickr-prev-month,
+.flatpickr-months .flatpickr-next-month {
+    color: var(--text-primary) !important;
+    fill: var(--text-primary) !important;
+}
+
+.flatpickr-months .flatpickr-prev-month svg,
+.flatpickr-months .flatpickr-next-month svg {
+    fill: currentColor !important;
+}
+
+.flatpickr-months .flatpickr-prev-month:hover svg,
+.flatpickr-months .flatpickr-next-month:hover svg {
+    fill: var(--color-accent) !important;
+}
+
+.flatpickr-weekday {
+    color: var(--text-muted) !important;
+    font-weight: 600 !important;
+}
+
+.flatpickr-time input {
+    color: var(--text-primary) !important;
+}
+
+.flatpickr-time .flatpickr-am-pm {
+    color: var(--text-primary) !important;
+}
+
+/* Поле ввода (Инпут календаря на самом сайте) */
+.flatpickr-input {
+    background: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 6px !important;
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+    font-family: 'Roboto', sans-serif !important;
+    width: 180px !important;
+}
+
+.flatpickr-input:focus {
+    outline: none !important;
+    border-color: var(--border-active) !important;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15) !important;
+}
+
+.flatpickr-input::placeholder {
+    color: var(--text-muted) !important;
+}
+
+/* ✅ СТИЛИЗАЦИЯ ПЛЕЙСХОЛДЕРА ДЛЯ ВСЕХ БРАУЗЕРОВ */
+
+/* Для Chrome, Safari, Opera и Edge */
+.flatpickr-input::-webkit-input-placeholder {
+    color: var(--text-muted) !important;
+    opacity: 0.7;
+}
+
+/* Для Firefox */
+.flatpickr-input::-moz-placeholder {
+    color: var(--text-muted) !important;
+    opacity: 0.7;
+}
+
+/* Для Internet Explorer / Edge Legacy */
+.flatpickr-input:-ms-input-placeholder {
+    color: var(--text-muted) !important;
+    opacity: 0.7;
+}
+
+/* Современный стандарт */
+.flatpickr-input::placeholder {
+    color: var(--text-muted) !important;
+    opacity: 0.7;
+}
+
+
+.dark-theme .flatpickr-calendar,
+.dark-theme .flatpickr-monthDropdown-months,
+.dark-theme .flatpickr-monthDropdown-month {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+.beige-theme .flatpickr-calendar,
+.beige-theme .flatpickr-monthDropdown-months,
+.beige-theme .flatpickr-monthDropdown-month {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ✅ ФИКС ДЛЯ FIREFOX & SAFARI: Принудительное наследование цветов выпадающими пунктами месяцев */
+.flatpickr-monthDropdown-months option {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Фикс для активного/выбранного пункта в выпадающем списке */
+.flatpickr-monthDropdown-months option:checked,
+.flatpickr-monthDropdown-months option:hover {
+    background-color: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Плавное скрытие крестика на старте без потери его стилей и формы */
+#clearDateFilter {
+    opacity: 0;
+    transition: opacity var(--transition-speed) ease;
 }

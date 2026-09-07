@@ -77,7 +77,7 @@
         <div class="widget-sub" id="totalTimeMinutes"></div>
     </div>
     <div class="widget" data-widget="efficiency">
-        <div class="widget-label">КПД</div>
+        <div class="widget-label">Качество</div>
         <div class="widget-value" id="efficiencyValue">0</div>
         <div class="widget-sub" id="efficiencyDetails"></div>
     </div>
@@ -96,7 +96,7 @@
                     <button class="chart-btn" data-mode="days">По дням</button>
                 </div>
                 <div class="chart-period">
-    <input type="text" id="dateRange" class="date-input" placeholder="Выберите период" />
+    <input type="text" id="dateRange" style="opacity: 0; transition: opacity 0.2s ease;">
     <button id="clearDateFilter" class="btn-sm">✕</button>
 </div>
             </div>
@@ -107,7 +107,6 @@
 
         <!-- Список дней -->
         <section id="dayList" class="day-list">
-            <div class="empty-state">Нет данных для отображения</div>
         </section>
 
         <!-- Нижняя панель -->
@@ -249,116 +248,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-
-    <style>
-    .flatpickr-calendar {
-        background: var(--bg-secondary) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 12px !important;
-        box-shadow: var(--shadow-md) !important;
-        font-family: 'Roboto', sans-serif !important;
-    }
-    
-    .flatpickr-day {
-        color: var(--text-primary) !important;
-        border-radius: 6px !important;
-    }
-    
-    .flatpickr-day:hover {
-        background: var(--bg-hover) !important;
-        color: var(--text-primary) !important;
-    }
-    
-    .flatpickr-day.selected,
-    .flatpickr-day.startRange,
-    .flatpickr-day.endRange,
-    .flatpickr-day.selected:hover {
-        background: var(--color-accent) !important;
-        border-color: var(--color-accent) !important;
-        color: white !important;
-        box-shadow: none !important;
-    }
-    
-    .flatpickr-day.today {
-        border-color: var(--color-accent) !important;
-    }
-    
-    .flatpickr-day.today:hover {
-        background: var(--color-accent) !important;
-        color: white !important;
-    }
-    
-    .flatpickr-day.inRange {
-        background: rgba(66, 153, 225, 0.15) !important;
-        color: var(--text-primary) !important;
-        box-shadow: none !important;
-    }
-    
-    .flatpickr-day.prevMonthDay,
-    .flatpickr-day.nextMonthDay {
-        color: var(--text-muted) !important;
-        opacity: 0.5 !important;
-    }
-    
-    .flatpickr-months .flatpickr-month {
-        color: var(--text-primary) !important;
-        fill: var(--text-primary) !important;
-    }
-    
-    .flatpickr-current-month {
-        color: var(--text-primary) !important;
-        font-size: 14px !important;
-        font-weight: 600 !important;
-    }
-    
-    .flatpickr-current-month input.cur-year {
-        color: var(--text-primary) !important;
-    }
-    
-    .flatpickr-weekday {
-        color: var(--text-muted) !important;
-    }
-    
-    .flatpickr-time input {
-        color: var(--text-primary) !important;
-    }
-    
-    .flatpickr-time .flatpickr-am-pm {
-        color: var(--text-primary) !important;
-    }
-    
-    .flatpickr-months .flatpickr-prev-month,
-    .flatpickr-months .flatpickr-next-month {
-        color: var(--text-primary) !important;
-        fill: var(--text-primary) !important;
-    }
-    
-    .flatpickr-months .flatpickr-prev-month:hover svg,
-    .flatpickr-months .flatpickr-next-month:hover svg {
-        fill: var(--color-accent) !important;
-    }
-    
-    .flatpickr-input {
-        background: var(--bg-input) !important;
-        color: var(--text-primary) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 6px !important;
-        padding: 6px 10px !important;
-        font-size: 13px !important;
-        font-family: 'Roboto', sans-serif !important;
-        width: 180px !important;
-    }
-    
-    .flatpickr-input:focus {
-        outline: none !important;
-        border-color: var(--border-active) !important;
-        box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15) !important;
-    }
-    
-    .flatpickr-input::placeholder {
-        color: var(--text-muted) !important;
-    }
-</style>
 
     <!-- Наши скрипты в правильном порядке -->
     <script src="core/constants.js"></script>

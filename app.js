@@ -314,9 +314,9 @@ function setupEvents() {
         
         // Начисто очищаем и прячем блок со старым отчетом
         const progressStats = document.getElementById('progressStats');
-if (progressStats) {
-    progressStats.style.display = 'none';
-}
+        if (progressStats) {
+            progressStats.style.display = 'none';
+        }
         document.getElementById('totalHandsFound').textContent = '0';
         document.getElementById('newHandsAdded').textContent = '0';
         document.getElementById('duplicateHandsSkipped').textContent = '0';
@@ -327,8 +327,13 @@ if (progressStats) {
             progressActions.style.display = 'none';
         }
         
-        // Открываем стерильно чистое модальное окно
+        // 1. Открываем модальное окно (элемент становится видимым в DOM)
         openModal('importModal');
+
+        // 2. ✅ ИСПРАВЛЕНО: Инициализируем Drag'n'Drop строго ПОСЛЕ того, как окно открылось
+        setTimeout(function() {
+            setupDropZone();
+        }, 50);
     });
 
 
@@ -454,7 +459,7 @@ if (savedOffset !== undefined) {
         hideProgress();
     });
 
-    // Инициализация Flatpickr для выбора диапазона дат (Полная изоляция от часовых поясов ПК)
+    // Инициализация Flatpickr для выбора диапазона дат (С отложенной загрузкой плейсхолдера)
     flatpickr("#dateRange", {
         mode: "range",
         dateFormat: "Y-m-d",
@@ -463,14 +468,15 @@ if (savedOffset !== undefined) {
         onChange: function(selectedDates, dateStr, instance) {
             // Выполняем фильтрацию только когда пользователь выбрал обе границы диапазона
             if (selectedDates.length === 2) {
-                // Извлекаем чистые текстовые строки формата YYYY-MM-DD напрямую из инпута плагина
                 const dates = dateStr.split(" to ");
+                
+                // ✅ ИСПРАВЛЕНО: Записываем только валидные строковые значения
                 AppState.dateStart = dates[0];
-                AppState.dateEnd = dates[1];
+                AppState.dateEnd = dates[1] || dates[0]; // Если выбран один день, дублируем его как конец периода
                 
                 document.getElementById('dateRange').value = dateStr;
                 
-                // Сохраняем в localStorage чистый текст, соответствующий датам из архивов раздач
+                // Сохраняем в localStorage чистый строковый текст
                 localStorage.setItem('pokerDateStart', AppState.dateStart);
                 localStorage.setItem('pokerDateEnd', AppState.dateEnd);
                 
@@ -493,12 +499,24 @@ if (savedOffset !== undefined) {
         }
     });
 
-    // Установка текстового значения в инпут при загрузке страницы (без создания объектов Date)
-    if (AppState.dateStart && AppState.dateEnd) {
+    // Прогружаем текст в инпут строго в самом конце инициализации
+     if (AppState.dateStart && AppState.dateEnd) {
         document.getElementById('dateRange').value = AppState.dateStart + ' to ' + AppState.dateEnd;
+    } else {
+        document.getElementById('dateRange').placeholder = "Выберите период";
     }
 
-    // Обработчик кнопки ручного сброса фильтра дат
+    // Плавно проявляем инпут и крестик вместе, когда Flatpickr полностью готов к работе
+    setTimeout(function() {
+        const dateInput = document.getElementById('dateRange');
+        if (dateInput) dateInput.style.opacity = "1";
+
+        // ✅ Крестик теперь тоже проявляется плавно и одновременно с календарем
+        const clearBtn = document.getElementById('clearDateFilter');
+        if (clearBtn) clearBtn.style.opacity = "1";
+    }, 50);
+
+    // Обработчик клика без дубликатов
     document.getElementById('clearDateFilter').addEventListener('click', function() {
         AppState.dateStart = null;
         AppState.dateEnd = null;
@@ -507,45 +525,16 @@ if (savedOffset !== undefined) {
         localStorage.removeItem('pokerDateStart');
         localStorage.removeItem('pokerDateEnd');
         
-        // Начисто сбрасываем внутреннее визуальное состояние самого виджета календаря
+        // Сбрасываем внутреннее состояние виджета календаря Flatpickr
         const fp = document.querySelector('#dateRange')._flatpickr;
         if (fp) {
             fp.clear();
         }
         
+        // Перерисовываем систему по единой цепочке с учетом текущих лимитов
+        const currentLimits = getSelectedLimits();
         updateChart();
-        updateDayList(getSelectedLimits());
-        updateUI();
-    });
-
-// Устанавливаем сохранённое значение в поле и календаре
-if (AppState.dateStart && AppState.dateEnd) {
-    document.getElementById('dateRange').value = AppState.dateStart + ' to ' + AppState.dateEnd;
-    
-    // Обновляем Flatpickr
-    const fp = document.querySelector('#dateRange')._flatpickr;
-    if (fp) {
-        fp.setDate([AppState.dateStart, AppState.dateEnd], true);
-    }
-}
-
-document.getElementById('clearDateFilter').addEventListener('click', function() {
-        AppState.dateStart = null;
-        AppState.dateEnd = null;
-        
-        // Явно очищаем поле и localStorage
-        document.getElementById('dateRange').value = '';
-        localStorage.removeItem('pokerDateStart');
-        localStorage.removeItem('pokerDateEnd');
-        
-        // Сбрасываем сам плагин календаря
-        const fp = document.querySelector('#dateRange')._flatpickr;
-        if (fp) {
-            fp.clear(); 
-        }
-        
-        updateChart();
-        updateDayList(getSelectedLimits());
+        updateDayList(currentLimits);
         updateUI();
     });
 }
@@ -621,66 +610,55 @@ function saveSelectedLimits() {
 
 function setupDropZone() {
     const zone = document.getElementById('dropZone');
+    if (!zone) {
+        console.warn('⚠️ Элемент #dropZone не найден в DOM');
+        return;
+    }
 
-    ['dragenter', 'dragover'].forEach(function(event) {
-        zone.addEventListener(event, function(e) {
-            e.preventDefault();
-            zone.classList.add('drag-over');
-        });
-    });
+    // Отключаем стандартное поведение браузера для всего окна, чтобы вкладка не перезагружалась
+    const preventDefault = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    };
 
-    ['dragleave', 'drop'].forEach(function(event) {
-        zone.addEventListener(event, function(e) {
-            e.preventDefault();
-            zone.classList.remove('drag-over');
-        });
-    });
+    window.addEventListener('dragover', preventDefault, false);
+    window.addEventListener('drop', preventDefault, false);
+
+    // Привязываем события к зоне сброса
+    zone.addEventListener('dragenter', function(e) {
+        preventDefault(e);
+        zone.classList.add('drag-over');
+    }, false);
+
+    zone.addEventListener('dragover', function(e) {
+        preventDefault(e);
+        zone.classList.add('drag-over');
+    }, false);
+
+    zone.addEventListener('dragleave', function(e) {
+        preventDefault(e);
+        zone.classList.remove('drag-over');
+    }, false);
 
     zone.addEventListener('drop', function(e) {
-        e.preventDefault();
-        const items = e.dataTransfer.items;
-        const files = [];
-        let totalItems = items.length;
-        let processed = 0;
-
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
-
-            if (entry) {
-                if (entry.isDirectory) {
-                    traverseDirectory(entry, files, function() {
-                        processed++;
-                        if (processed === totalItems) {
-                            handleFiles(files);
-                        }
-                    });
-                } else if (entry.isFile) {
-                    entry.file(function(file) {
-                        files.push(file);
-                        processed++;
-                        if (processed === totalItems) {
-                            handleFiles(files);
-                        }
-                    });
-                }
-            } else {
-                const file = item.getAsFile();
-                if (file) {
-                    files.push(file);
-                }
-                processed++;
-                if (processed === totalItems) {
-                    handleFiles(files);
-                }
-            }
+        preventDefault(e);
+        zone.classList.remove('drag-over');
+        
+        const dt = e.dataTransfer;
+        const filesInput = dt.files;
+        
+        if (filesInput && filesInput.length > 0) {
+            console.log('📦 Файлы успешно пойманы через Drag\'n\'Drop:', filesInput.length);
+            // Превращаем FileList в обычный массив и передаем в ваш обработчик импорта
+            handleFiles(Array.from(filesInput));
+        } else {
+            showNotification('❌ Не удалось прочитать сброшенные файлы', 'error');
         }
-
-        if (files.length > 0 && processed === totalItems) {
-            handleFiles(files);
-        }
-    });
+    }, false);
 }
+
+
+
 
 function traverseDirectory(entry, files, callback) {
     const reader = entry.createReader();
@@ -961,7 +939,7 @@ function updateUI() {
 function calculateBB100(stats) {
     if (!stats || stats.totalHands === 0) return 0;
     
-    const bb = stats.averageLimit || 1;
+    const bb = (stats.averageLimit || 1) / 100;  // Делим на 100, чтобы получить размер BB
     const hands = stats.totalHands;
     const netResult = stats.netResult || 0;
     
@@ -1029,7 +1007,7 @@ function updateWidgets(stats) {
         const formattedHourly = (convertedHourly < 0 ? '-' : '') + currencySymbol + Math.abs(convertedHourly).toFixed(2);
         efficiencyValue.textContent = formattedHourly;
         efficiencyValue.className = 'widget-value ' + (convertedHourly > 0 ? 'positive' : convertedHourly < 0 ? 'negative' : '');
-        efficiencyDetails.textContent = 'Доход в час';
+        efficiencyDetails.textContent = 'В час';
     }
 
     // ===== ОБЩИЙ РЕЗУЛЬТАТ =====
@@ -1097,10 +1075,10 @@ function updateDayList(selectedLimits = []) {
     }
 
     let html = '<div class="day-list-header" id="dayListHeader" style="cursor: pointer;" title="Кликните для копирования">';
-    html += '<span>День</span>';
-    html += '<span>Лимит</span>';
+    html += '<span>Рабочий период</span>';
+    html += '<span>Средний лимит</span>';
     html += '<span>Раздачи</span>';
-    html += '<span>Время</span>';
+    html += '<span>Длительность</span>';
     html += '<span>Результат</span>';
     html += '</div>';
 
@@ -1551,15 +1529,24 @@ function getCorrectedDate(date) {
 }
 
 function saveCurrencyRates() {
+    const usdEl = document.getElementById('usdRate');
+    const eurEl = document.getElementById('eurRate');
+    const rubEl = document.getElementById('rubRate');
+
+    // Безопасно собираем значения, только если элементы физически отрисованы в DOM
     const rates = {
-        USD: parseFloat(document.getElementById('usdRate').value) || 1.10,
-        EUR: parseFloat(document.getElementById('eurRate').value) || 1.00,
-        RUB: parseFloat(document.getElementById('rubRate').value) || 90.00
+        USD: usdEl ? (parseFloat(usdEl.value) || 1.10) : 1.10,
+        EUR: eurEl ? (parseFloat(eurEl.value) || 1.00) : 1.00,
+        RUB: rubEl ? (parseFloat(rubEl.value) || 90.00) : 90.00
     };
 
     AppState.dataManager.updateSettings({ currencyRates: rates });
+    
+    // Перерисовываем интерфейс и графики с новыми коэффициентами конвертации
     updateUI();
-    updateChart();
+    if (AppState.chart && typeof AppState.chart.update === 'function') {
+        updateChart();
+    }
 }
 
 async function fetchExchangeRates() {
