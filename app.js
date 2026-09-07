@@ -415,13 +415,24 @@ function setupEvents() {
     });
 
     document.getElementById('sessionBreak').addEventListener('change', function() {
-        const minutes = parseInt(this.value) || 5;
+    const value = this.value.trim();
+    if (value === '') {
+        // Если поле пустое, ничего не делаем
+        return;
+    }
+    
+    const minutes = parseInt(value);
+    if (!isNaN(minutes) && minutes >= 0) {
         AppState.dataManager.updateSettings({
             sessionBreakMinutes: minutes
         });
         updateUI();
         updateDayList(getSelectedLimits());
-    });
+    } else {
+        // Если ввели что-то невалидное, возвращаем предыдущее значение
+        this.value = AppState.dataManager.settings.sessionBreakMinutes || 5;
+    }
+});
 
     document.getElementById('timezoneOffset').addEventListener('change', function() {
     const offset = parseInt(this.value) || 0;
@@ -1090,18 +1101,14 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
 let endStr = '';
 
 if (day.sessions && day.sessions.length > 0) {
-    const firstSession = day.sessions[0];
     const lastSession = day.sessions[day.sessions.length - 1];
     
-    if (firstSession.startTime && lastSession.endTime) {
-        const startHours = firstSession.startTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-        const endHours = lastSession.endTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-        
-        startStr = formatDate(day.day) + ' ' + startHours;
-        
-        // ✅ Добавляем полную дату окончания
+    if (lastSession.endTime) {
         const endDate = formatDate(lastSession.endTime);
-        endStr = ' - ' + endDate + ' ' + endHours;
+        // Показываем только если дата отличается от начала
+        if (endDate !== startStr) {
+            endStr = ' - ' + endDate;
+        }
     }
 }
 
@@ -1667,7 +1674,3 @@ function formatDate(dateInput) {
 // ============================================================
 
 initApp();
-// Регистрируем состояние в глобальном объекте window для отладки из консоли
-window.AppState = AppState;
-window.filterHands = filterHands;
-window.getSelectedLimits = getSelectedLimits;
