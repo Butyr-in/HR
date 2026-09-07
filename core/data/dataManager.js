@@ -151,7 +151,7 @@ class DataManager {
         this.settings = this.loadSettings();
         this.heroNick = '';
         this.aliases = [];
-        this.calculator = new StatsCalculator();
+        this.calculator = new StatsCalculator(this.settings);
         this.isLoaded = false;
         this.isSaving = false;
         
@@ -282,7 +282,7 @@ class DataManager {
 
     // Если переданы конкретные руки
     if (filters.hands) {
-        const tempCalculator = new StatsCalculator();
+        const tempCalculator = new StatsCalculator(this.settings);
         for (const hand of filters.hands) {
             const player = hand.players.find(p => p.name === this.heroNick || this.aliases.includes(p.name));
             if (player) {
@@ -319,7 +319,7 @@ class DataManager {
         });
     }
 
-    const tempCalculator = new StatsCalculator();
+    const tempCalculator = new StatsCalculator(this.settings);
     for (const hand of filteredHands) {
         const player = hand.players.find(p => p.name === this.heroNick || this.aliases.includes(p.name));
         if (player) {
@@ -342,11 +342,9 @@ class DataManager {
     const selectedLimits = settings.limits;
 
     const heroHands = this.hands.filter(hand => {
-        // Фильтруем по лимитам
         if (selectedLimits === null) {
             // "Все" выбрано - показываем все
         } else if (selectedLimits.length === 0) {
-            // Ничего не выбрано - пусто
             return false;
         } else {
             if (!selectedLimits.includes('NL' + hand.limit)) {
@@ -357,6 +355,9 @@ class DataManager {
         return hand.players && hand.players.some(p => p.name === this.heroNick || this.aliases.includes(p.name));
     });
 
+    // Сортируем руки по времени начала
+    heroHands.sort((a, b) => a.startDate - b.startDate);
+
     const daysMap = {};
 
     for (const hand of heroHands) {
@@ -365,6 +366,8 @@ class DataManager {
 
         const correctedDate = new Date(hand.startDate);
         correctedDate.setHours(correctedDate.getHours() + (this.settings.timezoneOffset || 0));
+        
+        // Определяем день, к которому относится эта рука
         const dayKey = this.getDayKey(correctedDate, dayStartHour);
 
         if (!daysMap[dayKey]) {
@@ -387,7 +390,9 @@ class DataManager {
     for (const dayKey in daysMap) {
         const dayData = daysMap[dayKey];
         const sortedHands = dayData.hands.slice().sort((a, b) => a.startDate - b.startDate);
-        const sessions = this.groupIntoSessions(sortedHands, sessionBreak);
+        
+        // Разбиваем руки дня на сессии с учётом границ дня
+        const sessions = this.groupIntoSessions(sortedHands, sessionBreak, dayStartHour);
         
         const dayStartTime = sortedHands[0].startDate;
         const dayEndTime = sortedHands[sortedHands.length - 1].startDate;
@@ -410,54 +415,55 @@ class DataManager {
 }
 
     getDayKey(date, dayStartHour) {
-        const d = new Date(date);
+        const d = new Date(date.getTime());
         const hours = d.getHours();
         if (hours < dayStartHour) {
             d.setDate(d.getDate() - 1);
         }
-        d.setHours(0, 0, 0, 0);
-        return d.toISOString().split('T')[0];
+        
+        // Сборка строки YYYY-MM-DD строго по локальному времени, а не по UTC!
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}`;
     }
 
-    groupIntoSessions(hands, breakMinutes) {
-        if (hands.length === 0) return [];
 
-        const sessions = [];
-        let currentSession = [hands[0]];
-        const breakMs = breakMinutes * 60 * 1000;
-        const timezoneOffset = this.settings.timezoneOffset || 0;
+    groupIntoSessions(hands, breakMinutes, dayStartHour) {
+    if (hands.length === 0) return [];
+
+    dayStartHour = dayStartHour || this.settings.dayStartHour || 6;
+    const breakMs = breakMinutes * 60 * 1000;
+    const timezoneOffset = this.settings.timezoneOffset || 0;
+    
+    const getCorrectedDate = (date) => {
+        const corrected = new Date(date);
+        corrected.setHours(corrected.getHours() + timezoneOffset);
+        return corrected;
+    };
+
+    // Функция для проверки: относится ли дата к тому же рабочему дню
+    const isSameWorkDay = (date1, date2) => {
+        const day1 = this.getDayKey(date1, dayStartHour);
+        const day2 = this.getDayKey(date2, dayStartHour);
+        return day1 === day2;
+    };
+
+    const sessions = [];
+    let currentSession = [hands[0]];
+
+    for (let i = 1; i < hands.length; i++) {
+        const prevHand = hands[i - 1];
+        const currentHand = hands[i];
         
-        const getCorrectedDate = (date) => {
-            const corrected = new Date(date);
-            corrected.setHours(corrected.getHours() + timezoneOffset);
-            return corrected;
-        };
+        const diff = currentHand.startDate - prevHand.startDate;
+        
+        // Проверяем: перерыв больше breakMs ИЛИ переход на новый рабочий день
+        const isBreak = diff > breakMs;
+        const isNewDay = !isSameWorkDay(getCorrectedDate(prevHand.startDate), getCorrectedDate(currentHand.startDate));
 
-        for (let i = 1; i < hands.length; i++) {
-            const prevHand = hands[i - 1];
-            const currentHand = hands[i];
-            
-            const diff = currentHand.startDate - prevHand.startDate;
-
-            if (diff > breakMs) {
-                const firstHandDate = currentSession[0].startDate;
-                const lastHandDate = currentSession[currentSession.length - 1].startDate;
-
-                sessions.push({
-                    hands: currentSession,
-                    startTime: getCorrectedDate(firstHandDate),
-                    endTime: getCorrectedDate(lastHandDate),
-                    duration: (lastHandDate - firstHandDate) / 1000,
-                    netResult: currentSession.reduce((sum, h) => sum + h.result, 0),
-                    handsCount: currentSession.length
-                });
-                currentSession = [currentHand];
-            } else {
-                currentSession.push(currentHand);
-            }
-        }
-
-        if (currentSession.length > 0) {
+        if (isBreak || isNewDay) {
             const firstHandDate = currentSession[0].startDate;
             const lastHandDate = currentSession[currentSession.length - 1].startDate;
 
@@ -469,10 +475,28 @@ class DataManager {
                 netResult: currentSession.reduce((sum, h) => sum + h.result, 0),
                 handsCount: currentSession.length
             });
+            currentSession = [currentHand];
+        } else {
+            currentSession.push(currentHand);
         }
-
-        return sessions;
     }
+
+    if (currentSession.length > 0) {
+        const firstHandDate = currentSession[0].startDate;
+        const lastHandDate = currentSession[currentSession.length - 1].startDate;
+
+        sessions.push({
+            hands: currentSession,
+            startTime: getCorrectedDate(firstHandDate),
+            endTime: getCorrectedDate(lastHandDate),
+            duration: (lastHandDate - firstHandDate) / 1000,
+            netResult: currentSession.reduce((sum, h) => sum + h.result, 0),
+            handsCount: currentSession.length
+        });
+    }
+
+    return sessions;
+}
 
     async clearAll() {
         this.hands = [];

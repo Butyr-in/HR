@@ -62,7 +62,7 @@ async function initApp() {
         }
 
         updateLimitFilter();
-        setupEvents(); // Внутри setupEvents ваш код инициализации Flatpickr подхватит эти даты корректно
+        setupEvents();
         updateUI();
         initChart();
 
@@ -481,7 +481,6 @@ if (savedOffset !== undefined) {
                 localStorage.setItem('pokerDateEnd', AppState.dateEnd);
                 
                 updateChart();
-                updateDayList();
                 updateUI();
             } else if (selectedDates.length === 0) {
                 // Корректно обрабатываем полное очищение фильтра (клик по крестику)
@@ -493,7 +492,6 @@ if (savedOffset !== undefined) {
                 localStorage.removeItem('pokerDateEnd');
                 
                 updateChart();
-                updateDayList();
                 updateUI();
             }
         }
@@ -530,11 +528,7 @@ if (savedOffset !== undefined) {
         if (fp) {
             fp.clear();
         }
-        
-        // Перерисовываем систему по единой цепочке с учетом текущих лимитов
-        const currentLimits = getSelectedLimits();
         updateChart();
-        updateDayList(currentLimits);
         updateUI();
     });
 }
@@ -927,11 +921,12 @@ function updateUI() {
     // Получаем финальный массив рук, отфильтрованный по датам, лимитам и игроку
     const filteredHands = filterHands(AppState.dataManager.hands);
     
-    // Передаем руки в getStats БЕЗ ключа limits, чтобы DataManager не сбрасывал фильтр дат
+    // Считаем статистику для виджетов по отфильтрованным рукам
     const stats = AppState.dataManager.getStats({ hands: filteredHands });
-    
     updateWidgets(stats);
-    updateDayList(selectedLimits);
+    
+    // Передаем отфильтрованные руки в функцию отрисовки списка дней
+    updateDayList(selectedLimits, filteredHands);
 }
 
 
@@ -1050,11 +1045,12 @@ function convertCurrency(amount) {
 // ОБНОВЛЕНИЕ СПИСКА ДНЕЙ
 // ============================================================
 
-function updateDayList(selectedLimits = []) {
+function updateDayList(selectedLimits = [], filteredHands = null) {
     const days = AppState.dataManager.getDays({
         dayStartHour: AppState.dataManager.settings.dayStartHour,
         sessionBreakMinutes: AppState.dataManager.settings.sessionBreakMinutes,
-        limits: selectedLimits
+        limits: selectedLimits,
+        hands: filteredHands
     });
 
     // Фильтрация по датам
@@ -1091,21 +1087,23 @@ function updateDayList(selectedLimits = []) {
         
         // Безопасно вытаскиваем реальное время начала первой сессии и конца последней сессии дня
         let startStr = formatDate(day.day);
-        let endStr = '';
+let endStr = '';
+
+if (day.sessions && day.sessions.length > 0) {
+    const firstSession = day.sessions[0];
+    const lastSession = day.sessions[day.sessions.length - 1];
+    
+    if (firstSession.startTime && lastSession.endTime) {
+        const startHours = firstSession.startTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        const endHours = lastSession.endTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
         
-        if (day.sessions && day.sessions.length > 0) {
-            const firstSession = day.sessions[0];
-            const lastSession = day.sessions[day.sessions.length - 1];
-            
-            // Если объекты дат существуют, форматируем их в красивую строку с часами и минутами
-            if (firstSession.startTime && lastSession.endTime) {
-                const startHours = firstSession.startTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                const endHours = lastSession.endTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                
-                startStr = formatDate(day.day) + ' ' + startHours;
-                endStr = ' - ' + endHours;
-            }
-        }
+        startStr = formatDate(day.day) + ' ' + startHours;
+        
+        // ✅ Добавляем полную дату окончания
+        const endDate = formatDate(lastSession.endTime);
+        endStr = ' - ' + endDate + ' ' + endHours;
+    }
+}
 
         // Время в зависимости от режима карточки
         const totalSeconds = day.totalTime;
@@ -1117,7 +1115,7 @@ function updateDayList(selectedLimits = []) {
         }
 
         html += '<div class="day-item" data-day="' + day.day + '">';
-        html += '<span class="day-date">' + startStr + ' - ' + endStr + '</span>';
+        html += '<span class="day-date">' + startStr + (endStr ? ' ' + endStr : '') + '</span>';
         html += '<span class="limit">NL' + avgLimit + '</span>';
         html += '<span class="hands-count">' + day.totalHands + '</span>';
         html += '<span class="time">' + timeDisplay + '</span>';
@@ -1669,3 +1667,7 @@ function formatDate(dateInput) {
 // ============================================================
 
 initApp();
+// Регистрируем состояние в глобальном объекте window для отладки из консоли
+window.AppState = AppState;
+window.filterHands = filterHands;
+window.getSelectedLimits = getSelectedLimits;
