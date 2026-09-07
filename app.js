@@ -5,6 +5,7 @@
 
 const AppState = {
     currentView: 'hands',
+    chartType: localStorage.getItem('pokerChartType') || 'line',
     dateStart: null,
     dateEnd: null,
     expandedDay: null,
@@ -472,22 +473,86 @@ if (savedOffset !== undefined) {
 
     // Инициализация Flatpickr для выбора диапазона дат (С отложенной загрузкой плейсхолдера)
     flatpickr("#dateRange", {
+        locale: {
+            firstDayOfWeek: 1,
+            weekdays: {
+                shorthand: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"],
+                longhand: ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
+            },
+            months: {
+                shorthand: ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"],
+                longhand: ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
+            },
+            rangeSeparator: " — "
+        },
         mode: "range",
-        dateFormat: "Y-m-d",
-        // Передаем строго текстовые строки, запрещая Flatpickr неявно вызывать конструктор new Date() по UTC
-        defaultDate: (AppState.dateStart && AppState.dateEnd) ? [AppState.dateStart, AppState.dateEnd] : null,
+        dateFormat: "d.m.y",
+        closeOnSelect: false,
+        // Превращаем сохраненные ISO-строки в полноценные объекты JavaScript Date для корректного старта
+        defaultDate: (AppState.dateStart && AppState.dateEnd) ? [new Date(AppState.dateStart), new Date(AppState.dateEnd)] : null,
+        onOpen: function() {
+        // Создаем затемнение
+        const overlay = document.createElement('div');
+        overlay.id = 'flatpickr-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 999;
+            opacity: 0; /* Стартуем с нулевой прозрачности */
+            transition: opacity 1s ease; /* Стабильный переход без багов анимации */
+        `;
+        document.body.appendChild(overlay);
+        
+        // Запускаем плавное проявление на следующем кадре рендера
+            setTimeout(function() {
+                overlay.style.opacity = '1';
+            }, 10);
+
+        // Клик по затемнению закрывает календарь
+        overlay.addEventListener('click', function() {
+            const fp = document.querySelector('#dateRange')._flatpickr;
+            if (fp) {
+                fp.close();
+            }
+        });
+    },
+    onClose: function() {
+        const overlay = document.getElementById('flatpickr-overlay');
+        if (overlay) {
+            // Отключаем физическую поимку кликов оверлеем. Клики мгновенно начнут проходить сквозь него на кнопки и график!
+            overlay.style.pointerEvents = 'none'; 
+            // Возвращаем прозрачность в 0
+            overlay.style.opacity = '0';
+            setTimeout(function() {
+                overlay.remove();  // ← удаляем ПОСЛЕ анимации
+            }, 1000);
+        }
+    },
         onChange: function(selectedDates, dateStr, instance) {
             // Выполняем фильтрацию только когда пользователь выбрал обе границы диапазона
             if (selectedDates.length === 2) {
-                const dates = dateStr.split(" to ");
-                
-                // ✅ ИСПРАВЛЕНО: Записываем только валидные строковые значения
-                AppState.dateStart = dates[0];
-                AppState.dateEnd = dates[1] || dates[0]; // Если выбран один день, дублируем его как конец периода
+                // 🎯 Объявляем функцию конвертации здесь, чтобы JavaScript её видел
+                const toISODate = (date) => {
+                    if (!date) return '';
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                };
+
+                // ✅ ПРАВИЛЬНО: Передаем объекты дат в функцию и получаем чистый ISO-формат (ГГГГ-ММ-ДД)
+                AppState.dateStart = toISODate(selectedDates[0]);
+                AppState.dateEnd = toISODate(selectedDates[1] || selectedDates[0]); // Защита: если выбран один день, дублируем его
                 
                 document.getElementById('dateRange').value = dateStr;
                 
-                // Сохраняем в localStorage чистый строковый текст
+                // Сохраняем в localStorage чистый строковый ISO-текст для стабильной загрузки
                 localStorage.setItem('pokerDateStart', AppState.dateStart);
                 localStorage.setItem('pokerDateEnd', AppState.dateEnd);
                 
@@ -508,10 +573,8 @@ if (savedOffset !== undefined) {
         }
     });
 
-    // Прогружаем текст в инпут строго в самом конце инициализации
-     if (AppState.dateStart && AppState.dateEnd) {
-        document.getElementById('dateRange').value = AppState.dateStart + ' to ' + AppState.dateEnd;
-    } else {
+    // Если даты в памяти отсутствуют, просто показываем аккуратный плейсхолдер
+    if (!AppState.dateStart || !AppState.dateEnd) {
         document.getElementById('dateRange').placeholder = "Выберите период";
     }
 
@@ -902,25 +965,76 @@ function startProgressAnimation() {
 // МОДАЛКИ
 // ============================================================
 
+// ============================================================
+// МОДАЛКИ (Исправлено под поддержку плавного 1s transition)
+// ============================================================
+
+// ============================================================
+// МОДАЛКИ (Исправлено под плавный 1-секундный переход)
+// ============================================================
+
+// ============================================================
+// МОДАЛКИ (Исправлено под плавный 1-секундный переход)
+// ============================================================
+
+// Глобальный технический указатель для отслеживания активных таймеров закрытия
+let modalCloseTimeout = null;
+
 function openModal(id) {
-    document.getElementById('overlay').classList.remove('hidden');
-    document.getElementById(id).classList.remove('hidden');
+    // Если в памяти висит незавершенный таймер закрытия — мгновенно уничтожаем его!
+    if (modalCloseTimeout) {
+        clearTimeout(modalCloseTimeout);
+        modalCloseTimeout = null;
+    }
+    const overlay = document.getElementById('overlay');
+    const modal = document.getElementById(id);
+    
+    // 1. Сначала делаем элементы видимыми в DOM структуре
+    if (overlay) overlay.classList.remove('hidden');
+    if (modal) modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    
+    if (overlay) overlay.style.pointerEvents = 'auto';
+    if (modal) modal.style.pointerEvents = 'auto';
+
+    // 2. ✅ ХАК РЕНДЕРА: Даем браузеру 10мс, чтобы считать стартовые стили opacity:0,
+    // а затем плавно включаем видимость, запуская transition из CSS
+    setTimeout(function() {
+        if (overlay) overlay.classList.add('active');
+        if (modal) modal.classList.add('active');
+    }, 10);
 }
 
 function closeModal(id) {
-    document.getElementById(id).classList.add('hidden');
-    document.getElementById('overlay').classList.add('hidden');
-    document.body.style.overflow = '';
+    const overlay = document.getElementById('overlay');
+    const modal = document.getElementById(id);
+    
+    // 1. Мгновенно отключаем физическое перекрытие мыши
+    if (overlay) overlay.style.pointerEvents = 'none';
+    if (modal) modal.style.pointerEvents = 'none';
+    
+    // 2. Убираем класс активности, запуская плавное 1-секундное таяние прозрачности обратно в 0
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    
+    // 3. Записываем таймер в глобальную переменную, чтобы openModal мог его перехватить
+    modalCloseTimeout = setTimeout(function() {
+        if (modal) modal.classList.add('hidden');
+        if (overlay) overlay.classList.add('hidden');
+        document.body.style.overflow = '';
+        modalCloseTimeout = null; // Очищаем указатель после успешного завершения
+    }, 1000); // Ровно 1 секунда анимации из CSS
 }
 
 function closeAllModals() {
-    document.querySelectorAll('.modal').forEach(function(m) {
-        m.classList.add('hidden');
+    // Находим все активные модалки и поочередно закрываем их плавно
+    document.querySelectorAll('.modal:not(.hidden)').forEach(function(m) {
+        closeModal(m.id);
     });
-    document.getElementById('overlay').classList.add('hidden');
-    document.body.style.overflow = '';
 }
+
+
+
 
 // ============================================================
 // UI ОБНОВЛЕНИЕ
@@ -1272,11 +1386,15 @@ function toggleWidgetMode(type) {
 // ГРАФИК
 // ============================================================
 
+// ============================================================
+// ГРАФИК
+// ============================================================
+
 function initChart() {
     const ctx = document.getElementById('chartCanvas').getContext('2d');
 
     AppState.chart = new Chart(ctx, {
-        type: 'line',
+        type: AppState.chartType, // ✅ Восстанавливаем тип из памяти при старте
         data: {
             labels: [],
             datasets: [{
@@ -1286,66 +1404,124 @@ function initChart() {
                 backgroundColor: 'rgba(66, 153, 225, 0.1)',
                 fill: true,
                 tension: 0.4,
-                pointRadius: 4,
-                pointHoverRadius: 8,
+                pointRadius: AppState.chartType === 'bar' ? 0 : 2, // Адаптивный радиус при старте
+                pointHoverRadius: AppState.chartType === 'bar' ? 0 : 8,
                 pointBackgroundColor: '#4299e1',
                 pointBorderColor: '#ffffff',
-                pointBorderWidth: 2
+                pointBorderWidth: 2,
+                clip: false,
+                hoverHitRadius: 35
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: {
+                duration: 1000,
+                easing: 'easeOutQuart'
+            },
+            interaction: {
+                intersect: false,
+                mode: 'nearest',
+                axis: 'x'
+            },
+            transitions: {
+                active: {
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuad'
+                    }
+                }
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    displayColors: false,
+                    bodyFont: {
+                        family: '"Roboto Mono", monospace',
+                        size: 13
+                    },
+                    titleFont: {
+                        family: '"Roboto Mono", monospace',
+                        size: 13
+                    },
                     callbacks: {
                         label: function(context) {
                             const value = context.parsed.y;
                             const currencySymbol = getCurrencySymbol();
-                            const formatted = (value < 0 ? '-' : '') + currencySymbol + Math.abs(value).toFixed(2);
-                            return formatted;
+                            const formatted = (value < 0 ? '-' : value > 0 ? '+' : '') + currencySymbol + Math.abs(value).toFixed(2);
+                            
+                            const index = context.dataIndex;
+                            const data = context.dataset.data;
+                            
+                            if (index > 0 && data[index - 1] !== undefined) {
+                                const prevValue = data[index - 1]; // ✅ ИСПРАВЛЕНО: убран несуществующий dataValues
+                                const diff = value - prevValue;
+                                // ✅ ИСПРАВЛЕНО: теперь и здесь ноль выводится без знака плюса или минуса
+                                const diffFormatted = (diff < 0 ? '-' : diff > 0 ? '+' : '') + currencySymbol + Math.abs(diff).toFixed(2);
+                                
+                                return [
+                                    `Результат: ${formatted}`,
+                                    `Изменение: ${diffFormatted}`
+                                ];
+                            }
+                            
+                            return `Результат: ${formatted}`;
                         }
                     }
                 }
             },
             scales: {
-                x: { grid: { display: false } },
+                x: { 
+                    grid: { display: false },
+                    // Восстанавливаем отступы осей при старте, если сохранен режим столбцов
+                    offset: AppState.chartType === 'bar',
+                    bounds: AppState.chartType === 'bar' ? 'ticks' : 'data'
+                },
                 y: {
-    grid: {
-        color: 'rgba(0,0,0,0.05)'
-    },
-    ticks: {
-        precision: 2,
-        callback: function(value) {
-            const currencySymbol = getCurrencySymbol();
-            // Простое форматирование без лишних нулей
-            return (value < 0 ? '-' : '') + currencySymbol + Math.abs(value).toFixed(2);
-        }
-    }
-}
+                    grid: {
+                        color: 'rgba(0,0,0,0.05)'
+                    },
+                    ticks: {
+                        precision: 2,
+                        callback: function(value) {
+                            const currencySymbol = getCurrencySymbol();
+                            return (value < 0 ? '-' : '') + currencySymbol + Math.abs(value).toFixed(2);
+                        }
+                    }
+                }
+            },
+            onHover: function(event, elements) {
+                if (elements && elements.length) {
+                    document.getElementById('chartCanvas').style.cursor = 'pointer';
+                } else {
+                    document.getElementById('chartCanvas').style.cursor = 'default';
+                }
             }
         }
     });
 
     updateChart();
+
+    // Клик по графику для переключения типа
+    document.getElementById('chartCanvas').addEventListener('click', function() {
+        toggleChartType();
+    });
 }
 
 function updateChart() {
-    // ✅ ЖЕЛЕЗОБЕТОННЫЙ ПРЕДОХРАНИТЕЛЬ: Если график ещё не инициализирован в initChart, выходим без ошибок
     if (!AppState.chart || typeof AppState.chart.update !== 'function') return;
 
     const hands = AppState.dataManager.hands;
     const filteredHands = filterHands(hands);
 
-    // Безопасный сброс анимаций и очистка холста при нулевом результате
     if (filteredHands.length === 0) {
         AppState.chart.data.labels = [];
         if (AppState.chart.data.datasets && AppState.chart.data.datasets[0]) {
             AppState.chart.data.datasets[0].data = [];
         }
-        AppState.chart.stop(); // Останавливаем текущие анимации рендера, предотвращая баг мерцания
-        AppState.chart.update('none'); // Обновляем холст мгновенно без анимационных переходов
+        AppState.chart.stop();
+        AppState.chart.update('none');
         return;
     }
 
@@ -1363,15 +1539,81 @@ function updateChart() {
     }, 0);
     
     const convertedTotalResult = convertCurrency(totalResult);
+    const dataValues = AppState.chart.data.datasets[0].data;
     
-    // Динамическое изменение бэкграунда зоны под графиком (зеленый/красный в зависимости от сессии)
-    AppState.chart.data.datasets[0].backgroundColor = convertedTotalResult > 0 ? 'rgba(72, 187, 120, 0.1)' : convertedTotalResult < 0 ? 'rgba(252, 129, 129, 0.1)' : 'rgba(66, 153, 225, 0.1)';
-    AppState.chart.data.datasets[0].pointBackgroundColor = AppState.chart.data.datasets[0].data.map(value => 
-        value < 0 ? '#fc8181' : '#48bb78'
-    );
+    if (AppState.chartType === 'bar') {
+        // Столбчатый график: красим строго по значению (выше нуля — зеленый, ниже — красный)
+        const barColors = dataValues.map(value => {
+            return value >= 0 ? 'rgba(72, 187, 120, 0.8)' : 'rgba(252, 129, 129, 0.8)';
+        });
+        AppState.chart.data.datasets[0].backgroundColor = barColors;
+        AppState.chart.data.datasets[0].pointRadius = 0;
+        AppState.chart.data.datasets[0].pointHoverRadius = 0;
+        AppState.chart.data.datasets[0].borderColor = 'rgba(0,0,0,0)';
+    } else {
+        // Линейный график
+        AppState.chart.data.datasets[0].backgroundColor = convertedTotalResult > 0 ? 'rgba(72, 187, 120, 0.1)' : convertedTotalResult < 0 ? 'rgba(252, 129, 129, 0.1)' : 'rgba(66, 153, 225, 0.1)';
+        AppState.chart.data.datasets[0].borderColor = '#4299e1';
+        
+        // Цвет точек зависит от изменения
+        const pointColors = dataValues.map((value, index) => {
+            if (index === 0) {
+                return value >= 0 ? '#48bb78' : '#fc8181';
+            }
+            const prevValue = dataValues[index - 1];
+            const diff = value - prevValue;
+            return diff >= 0 ? '#48bb78' : '#fc8181';
+        });
+        AppState.chart.data.datasets[0].pointBackgroundColor = pointColors;
+        AppState.chart.data.datasets[0].pointRadius = 0; 
+        AppState.chart.data.datasets[0].pointHoverRadius = 8;
+        AppState.chart.data.datasets[0].hitRadius = 10; // Настройка точной поимки курсора
+    }
     
     AppState.chart.update();
 }
+
+// Переключение типа графика
+function toggleChartType() {
+    if (AppState.chartType === 'line') {
+        AppState.chartType = 'bar';
+        localStorage.setItem('pokerChartType', 'bar'); // Сохраняем в память
+        showNotification('📊 Столбчатый график', 'info');
+    } else {
+        AppState.chartType = 'line';
+        localStorage.removeItem('pokerChartType'); // Очищаем кэш для дефолтного значения
+        showNotification('📈 Линейный график', 'info');
+    }
+    
+    // Передаем новый тип в структуру библиотеки
+    AppState.chart.config.type = AppState.chartType;
+    
+    if (AppState.chartType === 'bar') {
+        AppState.chart.data.datasets[0].pointRadius = 0;
+        AppState.chart.data.datasets[0].pointHoverRadius = 0;
+        AppState.chart.data.datasets[0].backgroundColor = null; 
+        AppState.chart.data.datasets[0].borderColor = null;
+
+        // Включаем пустые отступы по бокам, чтобы крайние столбцы не резались
+        AppState.chart.options.scales.x.offset = true;
+        AppState.chart.options.scales.x.bounds = 'ticks';
+    } else {
+        AppState.chart.data.datasets[0].pointRadius = 0;
+        AppState.chart.data.datasets[0].pointHoverRadius = 8;
+        AppState.chart.data.datasets[0].borderColor = '#4299e1'; 
+
+        // Прижимаем линию вплотную к краям холста
+        AppState.chart.options.scales.x.offset = false;
+        AppState.chart.options.scales.x.bounds = 'data';
+    }
+    
+    // Выполняем один чистый перерасчет и обновление анимации
+    updateChart();
+}
+
+
+
+
 
 function filterHands(hands) {
     let filtered = [...hands];
@@ -1457,11 +1699,17 @@ function updateChartByHands(hands) {
         }, 0);
         
         // Сначала накапливаем чистый итог в системной валюте (EUR)
-        cumulative += chunkResult;
+        if (AppState.chartType === 'bar') {
+            data.push(parseFloat(convertCurrency(chunkResult).toFixed(2)));
+        } else {
+            cumulative += chunkResult;
 
         labels.push(String(i + 1));
         // Конвертируем в выбранную валюту ТОЛЬКО финальную точку перед выводом на график
         data.push(parseFloat(convertCurrency(cumulative).toFixed(2)));
+    }
+
+        labels.push(String(i + 1));
     }
 
     AppState.chart.data.labels = labels;
@@ -1497,14 +1745,18 @@ function updateChartByDays(hands) {
     }
 
     const sortedDays = Object.keys(days).sort();
-    const labels = sortedDays.map(d => formatDate(d));
+    const labels = sortedDays.map((_, index) => String(index + 1)); 
     const data = [];
     
     // Считаем нарастающий итог в базовой валюте, а конвертируем ТОЛЬКО при выводе
     let cumulative = 0;
     for (const d of sortedDays) {
-        cumulative += days[d].result; // Накапливаем чистые EUR
-        data.push(parseFloat(convertCurrency(cumulative).toFixed(2))); // Конвертируем финальное значение
+        if (AppState.chartType === 'bar') {
+            data.push(parseFloat(convertCurrency(days[d].result).toFixed(2)));
+        } else {
+            cumulative += days[d].result;
+            data.push(parseFloat(convertCurrency(cumulative).toFixed(2)));
+        }
     }
 
     AppState.chart.data.labels = labels;

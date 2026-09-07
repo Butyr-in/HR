@@ -227,3 +227,4 @@ class ChartComponent {
         return { start: this.dateStart, end: this.dateEnd };
     }
 }
+

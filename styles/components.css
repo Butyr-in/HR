@@ -222,16 +222,16 @@
   box-shadow: var(--shadow-sm);
   min-height: 0;
   flex-shrink: 1;
-  overflow: hidden;
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
   flex: 1;
+  scrollbar-width: none;  /* Firefox - полностью скрываем */
 }
 
-/* Скрыть скроллбар, но оставить возможность скроллить */
+/* Chrome, Safari, Edge - полностью скрываем */
 .day-list::-webkit-scrollbar {
-  width: 6px;
+  display: none;  /* Убираем скролл полностью */
 }
 
 .day-list::-webkit-scrollbar-track {
@@ -476,6 +476,17 @@ input[type="number"] {
   z-index: 999;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+
+  /* Начальное скрытое состояние оверлея */
+  opacity: 0;
+  pointer-events: none; 
+  transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 1s ease;
+}
+
+/* ✅ ИСПРАВЛЕНО: Плавное проявление фона при добавлении класса .active */
+.overlay.active {
+  opacity: 1;
+  pointer-events: auto; 
 }
 
 .modal {
@@ -489,6 +500,7 @@ input[type="number"] {
   align-items: center;
   z-index: 1000;
   padding: 20px;
+  pointer-events: none;
 }
 
 .modal-content {
@@ -499,22 +511,24 @@ input[type="number"] {
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: modalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   border: 1px solid var(--border-color);
   position: relative;
+
+  /* Начальное скрытое состояние самого окна (сжато и смещено вниз) */
+  opacity: 0;
+  transform: scale(0.9) translateY(40px);
+  
+  /* Время анимации взлёта окна — ровно 1 секунда */
+  transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Анимация появления */
-@keyframes modalIn {
-  0% {
-    opacity: 0;
-    transform: scale(0.9) translateY(30px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+/* ✅ ИСПРАВЛЕНО: Плавный взлет и проявление окна, когда модалка получает класс .active */
+.modal.active .modal-content {
+  opacity: 1;
+  transform: scale(1) translateY(0);
 }
+
+
 
 /* ===== Modal Header ===== */
 .modal-header {
@@ -1166,13 +1180,20 @@ body {
     user-select: none;
 }
 
-/* ===== Flatpickr Calendar ===== */
+/* ===== Полупрозрачный Flatpickr календарь ===== */
 .flatpickr-calendar {
     background: var(--bg-secondary) !important;
-    border: 1px solid var(--border-color) !important;
-    border-radius: 12px !important;
-    box-shadow: var(--shadow-md) !important;
-    font-family: 'Roboto', sans-serif !important;
+    opacity: 0.85 !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-radius: 24px !important;
+    box-shadow: var(--shadow-lg) !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+.flatpickr-innerContainer {
+    padding-bottom: 2px !important;
 }
 
 .flatpickr-day {
@@ -1220,10 +1241,16 @@ body {
     opacity: 0.5 !important;
 }
 
+/* ===== Скрытие стрелок переключения года в календаре Flatpickr ===== */
+.flatpickr-calendar .numInputWrapper span {
+    display: none !important;
+}
+
+
 /* Шапка календаря и контейнер месяцев */
 .flatpickr-months {
     background: var(--bg-secondary) !important;
-    border-radius: 12px 12px 0 0 !important;
+    border-radius: 0 !important;  /* ← добавить скругление сверху */
 }
 
 .flatpickr-months .flatpickr-month {
