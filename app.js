@@ -1079,7 +1079,7 @@ function updateDayList(selectedLimits = []) {
         limits: selectedLimits
     });
 
-    // ✅ Заменяем только этот блок на чистое строковое сравнение:
+    // Фильтрация по датам
     let filteredDays = days;
     if (AppState.dateStart) {
         filteredDays = filteredDays.filter(day => day.day >= AppState.dateStart);
@@ -1129,11 +1129,20 @@ function updateDayList(selectedLimits = []) {
             }
         }
 
+        // Время в зависимости от режима карточки
+        const totalSeconds = day.totalTime;
+        let timeDisplay;
+        if (AppState.widgetModes.time === 'minutes') {
+            timeDisplay = Math.round(totalSeconds / 60) + ' мин';
+        } else {
+            timeDisplay = formatTime(totalSeconds);
+        }
+
         html += '<div class="day-item" data-day="' + day.day + '">';
         html += '<span class="day-date">' + startStr + ' - ' + endStr + '</span>';
         html += '<span class="limit">NL' + avgLimit + '</span>';
         html += '<span class="hands-count">' + day.totalHands + '</span>';
-        html += '<span class="time">' + formatTime(day.totalTime) + '</span>';
+        html += '<span class="time">' + timeDisplay + '</span>';
         html += '<span class="result ' + resultClass + '">' + (convertedDayResult < 0 ? '-' : '') + currencySymbol + Math.abs(convertedDayResult).toFixed(2) + '</span>';
         html += '</div>';
 
@@ -1145,11 +1154,20 @@ function updateDayList(selectedLimits = []) {
                 const sessionAvgLimit = calculateAverageLimitForSession(session);
                 const convertedSessionResult = convertCurrency(session.netResult);
 
+                // Время сессии в зависимости от режима карточки
+                const sessionDuration = session.duration;
+                let sessionTimeDisplay;
+                if (AppState.widgetModes.time === 'minutes') {
+                    sessionTimeDisplay = Math.round(sessionDuration / 60) + ' мин';
+                } else {
+                    sessionTimeDisplay = formatTime(sessionDuration);
+                }
+
                 html += '<div class="session-item">';
                 html += '<span class="session-time">' + formatTimeSession(session.startTime, session.endTime) + '</span>';
                 html += '<span class="session-limit">NL' + sessionAvgLimit + '</span>';
                 html += '<span class="session-hands">' + session.handsCount + '</span>';
-                html += '<span class="session-duration">' + formatTime(session.duration) + '</span>';
+                html += '<span class="session-duration">' + sessionTimeDisplay + '</span>';
                 html += '<span class="session-result ' + sessionClass + '">' + (convertedSessionResult < 0 ? '-' : '') + currencySymbol + Math.abs(convertedSessionResult).toFixed(2) + '</span>';
                 html += '</div>';
             }
@@ -1164,22 +1182,21 @@ function updateDayList(selectedLimits = []) {
     const header = document.getElementById('dayListHeader');
     if (header) {
         header.addEventListener('click', function() {
-    const rows = [];
-    
-    for (const day of filteredDays) {
-        // Средний лимит с точностью до сотых
-        const avgLimit = (day.totalHands > 0 ? 
-            (day.hands.reduce((sum, h) => sum + h.limit, 0) / day.totalHands) : 0
-        ).toFixed(2).replace('.', ',');
-        
-        const timeMinutes = (day.totalTime / 60).toFixed(2).replace('.', ',');
-        
-        rows.push([
-            avgLimit,  // ← Теперь с точностью до сотых (например, 5,50)
-            day.totalHands,
-            timeMinutes
-        ]);
-    }
+            const rows = [];
+            
+            for (const day of filteredDays) {
+                const avgLimit = (day.totalHands > 0 ? 
+                    (day.hands.reduce((sum, h) => sum + h.limit, 0) / day.totalHands) : 0
+                ).toFixed(2).replace('.', ',');
+                
+                const timeMinutes = (day.totalTime / 60).toFixed(2).replace('.', ',');
+                
+                rows.push([
+                    avgLimit,
+                    day.totalHands,
+                    timeMinutes
+                ]);
+            }
             
             const tsv = rows.map(row => row.join('\t')).join('\n');
             
