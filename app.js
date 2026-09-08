@@ -173,7 +173,28 @@ function applyTheme(theme) {
     if (app) {
         app.className = 'app';
     }
+
+    // ✅ НАДЁЖНОЕ ОБНОВЛЕНИЕ ЦВЕТОВ ГРАФИКА ДЛЯ ВСЕХ ТЕМ
+    if (AppState.chart && AppState.chart.options && AppState.chart.options.scales) {
+        // Запускаем небольшую задержку в 10мс, чтобы браузер успел применить CSS-классы темы к body
+        setTimeout(function() {
+            // Считываем актуальный цвет текста для текущей темы (хоть светлой, хоть тёмной)
+            const currentTextColor = getComputedStyle(document.body).getPropertyValue('--text-primary').trim() || '#2d3748';
+            
+            // Напрямую перезаписываем цвета осей в конфигурации Chart.js
+            AppState.chart.options.scales.x.ticks.color = currentTextColor;
+            AppState.chart.options.scales.y.ticks.color = currentTextColor;
+            
+            // На всякий случай делаем шрифт чуть жирнее для лучшей читаемости на мобильных
+            AppState.chart.options.scales.x.ticks.font = { weight: '600', size: 11 };
+            AppState.chart.options.scales.y.ticks.font = { weight: '600', size: 11 };
+            
+            // Перерисовываем график с новыми сочными цветами
+            AppState.chart.update();
+        }, 10);
+    }
 }
+
 
 // Переключение темы
 function toggleTheme() {
@@ -1653,24 +1674,35 @@ function initChart() {
             scales: {
     x: { 
         grid: { display: false },
+        // Восстанавливаем отступы осей при старте, если сохранен режим столбцов
+        offset: AppState.chartType === 'bar',
+        bounds: AppState.chartType === 'bar' ? 'ticks' : 'data',
         ticks: {
-            color: AppState.theme === 'dark' ? '#e2e8f0' : '#4a5568'
+            // ✅ ИСПРАВЛЕНО: Вместо жесткого цвета сразу считываем сочный цвет из CSS при старте страницы
+            color: function() {
+                return getComputedStyle(document.body).getPropertyValue('--text-primary').trim() || '#2d3748';
+            },
+            font: { weight: '600', size: 11 }
         }
     },
     y: {
         grid: {
-            color: AppState.theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
+            color: 'rgba(0,0,0,0.05)'
         },
         ticks: {
-            color: AppState.theme === 'dark' ? '#e2e8f0' : '#4a5568',
-            precision: 2,
+            // ✅ ИСПРАВЛЕНО: И для оси Y тоже считываем сочный цвет темы прямо при инициализации
+            color: function() {
+                return getComputedStyle(document.body).getPropertyValue('--text-primary').trim() || '#2d3748';
+            },
+            font: { weight: '600', size: 11 },
             callback: function(value) {
                 const currencySymbol = getCurrencySymbol();
-                return (value < 0 ? '-' : '') + currencySymbol + Math.abs(value).toFixed(2);
+                return (value < 0 ? '-' : '') + currencySymbol + Math.abs(Math.round(value));
             }
         }
     }
 },
+
             onHover: function(event, elements) {
                 if (elements && elements.length) {
                     document.getElementById('chartCanvas').style.cursor = 'pointer';
