@@ -1552,6 +1552,7 @@ function toggleWidgetMode(type) {
 
     AppState.dataManager.updateSettings({ widgetModes: AppState.widgetModes });
     updateUI();
+    updateChart();
 }
 
 // ============================================================
@@ -1595,7 +1596,7 @@ function initChart() {
             responsive: true,
             maintainAspectRatio: false,
             animation: {
-                duration: 1000,
+                duration: 500,
                 easing: 'easeOutQuart'
             },
             interaction: {
@@ -1606,7 +1607,7 @@ function initChart() {
             transitions: {
                 active: {
                     animation: {
-                        duration: 1000,
+                        duration: 500,
                         easing: 'easeOutQuad'
                     }
                 }
@@ -1650,25 +1651,26 @@ function initChart() {
                 }
             },
             scales: {
-                x: { 
-                    grid: { display: false },
-                    // Восстанавливаем отступы осей при старте, если сохранен режим столбцов
-                    offset: AppState.chartType === 'bar',
-                    bounds: AppState.chartType === 'bar' ? 'ticks' : 'data'
-                },
-                y: {
-                    grid: {
-                        color: 'rgba(0,0,0,0.05)'
-                    },
-                    ticks: {
-                        precision: 2,
-                        callback: function(value) {
-                            const currencySymbol = getCurrencySymbol();
-                            return (value < 0 ? '-' : '') + currencySymbol + Math.abs(value).toFixed(2);
-                        }
-                    }
-                }
-            },
+    x: { 
+        grid: { display: false },
+        ticks: {
+            color: AppState.theme === 'dark' ? '#e2e8f0' : '#4a5568'
+        }
+    },
+    y: {
+        grid: {
+            color: AppState.theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
+        },
+        ticks: {
+            color: AppState.theme === 'dark' ? '#e2e8f0' : '#4a5568',
+            precision: 2,
+            callback: function(value) {
+                const currencySymbol = getCurrencySymbol();
+                return (value < 0 ? '-' : '') + currencySymbol + Math.abs(value).toFixed(2);
+            }
+        }
+    }
+},
             onHover: function(event, elements) {
                 if (elements && elements.length) {
                     document.getElementById('chartCanvas').style.cursor = 'pointer';
@@ -1748,6 +1750,9 @@ function updateChart() {
         AppState.chart.data.datasets[0].hitRadius = 10; // Настройка точной поимки курсора
     }
     
+    AppState.chart.options.scales.y.ticks.callback = function(value) {
+        return (value < 0 ? '-' : '') + getCurrencySymbol() + Math.abs(Math.round(value));
+    };
     AppState.chart.update();
 }
 
