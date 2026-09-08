@@ -108,7 +108,7 @@
 /* ===== Widgets ===== */
 .widgets {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);  /* Было 5, теперь 4 */
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -227,6 +227,7 @@
   position: relative;
   flex: 1;
   scrollbar-width: none;  /* Firefox - полностью скрываем */
+  display: grid;
 }
 
 /* Chrome, Safari, Edge - полностью скрываем */
@@ -294,22 +295,6 @@
   font-weight: 600;
 }
 
-.day-sessions {
-  background: var(--bg-primary);
-  padding: 0 16px 8px 16px;
-  border-top: 2px solid var(--border-color);
-}
-
-.session-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 12px;
-  border-radius: 6px;
-  margin: 4px 0;
-  background: var(--bg-hover);  /* Более заметный контраст */
-  font-size: 13px;
-}
 .session-item:hover {
   background: var(--bg-hover);
 }
@@ -775,22 +760,22 @@ input[type="number"] {
 
 /* ===== Empty State ===== */
 .empty-state {
-  padding: 20px;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 14px;
-}
+  font-size: 24px;          /* Делаем шрифт заметно крупнее */
+  font-weight: 500;         /* Придаем тексту приятную плотность */
+  color: var(--text-muted); 
+  place-self: center;
+  }
 
 /* ===== Responsive ===== */
 @media (max-width: 1200px) {
   .widgets {
-    grid-template-columns: repeat(3, 1fr);
+    
   }
 }
 
 @media (max-width: 1024px) {
   .widgets {
-    grid-template-columns: repeat(2, 1fr);
+    
   }
 }
 
@@ -809,7 +794,7 @@ input[type="number"] {
   }
   
   .widgets {
-    grid-template-columns: 1fr;
+    
   }
   
   .footer {
@@ -1065,20 +1050,27 @@ input[type="number"] {
     font-size: 12px;
 }
 
+/* Выделение выбранного дня */
+.day-item.active {
+  background: var(--bg-hover); /* Делаем фон дня чуть темнее/светлее */
+  border-left: 4px solid var(--color-accent); /* Синяя/зеленая полоса слева для акцента */
+  padding-left: 12px; /* Компенсируем отступ из-за полосы, чтобы текст не прыгал */
+}
+
+
 /* ===== Day Sessions ===== */
 .day-sessions {
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
   padding: 4px 0 8px 0px;
-  border-top: 2px solid var(--border-color);
 }
 
 .session-item {
   display: grid;
-  /* Используем точно такую же пропорциональную пятиколоночную сетку, как у дней */
+  border-radius: 6px;
   grid-template-columns: 1.0fr 1.0fr 1.0fr 1.0fr 1fr;
   padding: 5px 12px;
   align-items: center;
-  background: var(--bg-card);
+  background: var(--bg-primary);
   font-size: 13px;
   margin: 4px 4px; /* Боковые зазоры */
   border-bottom: 1px solid var(--border-color); /* Вместо толстой рамки делаем элегантный разделитель */
@@ -1324,6 +1316,7 @@ body {
 
 /* Поле ввода (Инпут календаря на самом сайте) */
 .flatpickr-input {
+    text-align: center;
     background: var(--bg-input) !important;
     color: var(--text-primary) !important;
     border: 1px solid var(--border-color) !important;
@@ -1331,7 +1324,7 @@ body {
     padding: 6px 10px !important;
     font-size: 13px !important;
     font-family: 'Roboto', sans-serif !important;
-    width: 180px !important;
+    width: 145px !important;
 }
 
 .flatpickr-input:focus {

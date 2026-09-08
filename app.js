@@ -491,6 +491,11 @@ if (savedOffset !== undefined) {
         // Превращаем сохраненные ISO-строки в полноценные объекты JavaScript Date для корректного старта
         defaultDate: (AppState.dateStart && AppState.dateEnd) ? [new Date(AppState.dateStart), new Date(AppState.dateEnd)] : null,
         onOpen: function() {
+            // 🛡️ ЗАЩИТА ОТ БАГА: Если старый оверлей ещё существует в DOM (например, от прошлого быстрого клика), мгновенно удаляем его
+            const existingOverlay = document.getElementById('flatpickr-overlay');
+            if (existingOverlay) {
+                existingOverlay.remove();
+            }
         // Создаем затемнение
         const overlay = document.createElement('div');
         overlay.id = 'flatpickr-overlay';
@@ -558,6 +563,7 @@ if (savedOffset !== undefined) {
                 
                 updateChart();
                 updateUI();
+                instance.close();
             } else if (selectedDates.length === 0) {
                 // Корректно обрабатываем полное очищение фильтра (клик по крестику)
                 AppState.dateStart = null;
@@ -592,16 +598,20 @@ if (savedOffset !== undefined) {
     document.getElementById('clearDateFilter').addEventListener('click', function() {
         AppState.dateStart = null;
         AppState.dateEnd = null;
-        document.getElementById('dateRange').value = '';
+        
+        // Сбрасываем внутреннее состояние виджета календаря Flatpickr
+        const dateInput = document.getElementById('dateRange');
+        const fp = dateInput._flatpickr;
+        if (fp) {
+            fp.clear(); // Сначала очищаем календарь
+        }
+
+        dateInput.value = ''; 
+        dateInput.placeholder = "Выберите период"; // <-- Ставим строго после fp.clear()
         
         localStorage.removeItem('pokerDateStart');
         localStorage.removeItem('pokerDateEnd');
         
-        // Сбрасываем внутреннее состояние виджета календаря Flatpickr
-        const fp = document.querySelector('#dateRange')._flatpickr;
-        if (fp) {
-            fp.clear();
-        }
         updateChart();
         updateUI();
     });
@@ -1235,7 +1245,8 @@ if (day.sessions && day.sessions.length > 0) {
             timeDisplay = formatTime(totalSeconds);
         }
 
-        html += '<div class="day-item" data-day="' + day.day + '">';
+        const activeClass = isExpanded ? ' active' : '';
+html += '<div class="day-item' + activeClass + '" data-day="' + day.day + '">';
         html += '<span class="day-date">' + startStr + (endStr ? ' ' + endStr : '') + '</span>';
         html += '<span class="limit">NL' + avgLimit + '</span>';
         html += '<span class="hands-count">' + day.totalHands + '</span>';
