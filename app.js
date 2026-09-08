@@ -1284,10 +1284,6 @@ function convertCurrency(amount) {
 // ОБНОВЛЕНИЕ СПИСКА ДНЕЙ
 // ============================================================
 
-// ============================================================
-// ОБНОВЛЕНИЕ СПИСКА ДНЕЙ
-// ============================================================
-
 function updateDayList(selectedLimits = [], filteredHands = null) {
     const days = AppState.dataManager.getDays({
         dayStartHour: AppState.dataManager.settings.dayStartHour,
@@ -1353,7 +1349,7 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
 
         // ✅ Рассчитываем BB для дня
         const dayBB = day.totalBBs || 0;
-        const bbFormatted = (dayBB < 0 ? '-' : '') + Math.abs(Math.round(dayBB));
+        const bbFormatted = (dayBB < 0 ? '-' : '') + Math.abs(Math.round(dayBB)) + ' bb';
         const bbClass = dayBB > 0 ? 'positive' : dayBB < 0 ? 'negative' : '';
 
         const activeClass = isExpanded ? ' active' : '';
@@ -1376,7 +1372,7 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
 
                 // ✅ BB для сессии
                 const sessionBB = session.totalBBs || 0;
-                const sessionBBFormatted = (sessionBB < 0 ? '-' : '') + Math.abs(Math.round(sessionBB));
+                const sessionBBFormatted = (sessionBB < 0 ? '-' : '') + Math.abs(Math.round(sessionBB)) + ' bb';
                 const sessionBBClass = sessionBB > 0 ? 'positive' : sessionBB < 0 ? 'negative' : '';
 
                 const sessionDuration = session.duration;
