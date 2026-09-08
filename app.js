@@ -1131,17 +1131,17 @@ function updateWidgets(stats) {
     
     if (widgets.hands === 'total') {
         document.getElementById('totalHands').textContent = totalHands;
-        document.getElementById('handsPerHour').textContent = 'Всего';
+        document.getElementById('handsPerHour').textContent = 'всего';
     } else if (widgets.hands === 'perHour') {
         const hours = (stats.totalTime || 0) / 3600;
         const perHour = hours > 0 ? Math.round(totalHands / hours) : 0;
         document.getElementById('totalHands').textContent = perHour;
-        document.getElementById('handsPerHour').textContent = 'В час';
+        document.getElementById('handsPerHour').textContent = 'в час';
     } else {
         const days = Object.keys(stats.days || {}).length || 1;
         const perDay = Math.round(totalHands / days);
         document.getElementById('totalHands').textContent = perDay;
-        document.getElementById('handsPerHour').textContent = 'В день';
+        document.getElementById('handsPerHour').textContent = 'в день';
     }
 
     // ===== ВРЕМЯ =====
@@ -1150,29 +1150,29 @@ function updateWidgets(stats) {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     document.getElementById('totalTime').textContent = hours + ':' + String(minutes).padStart(2, '0');
-    document.getElementById('totalTimeMinutes').textContent = 'ЧЧ:ММ';
+    document.getElementById('totalTimeMinutes').textContent = 'чч:мм';
 } else {
         const minutes = Math.round((stats.totalTime || 0) / 60);
         document.getElementById('totalTime').textContent = minutes;
-        document.getElementById('totalTimeMinutes').textContent = 'Минуты';
+        document.getElementById('totalTimeMinutes').textContent = 'минуты';
     }
 
-    // ===== ЭФФЕКТИВНОСТЬ =====
+    // ===== КАЧЕСТВО =====
     if (widgets.efficiency === 'bb100') {
         const bb100 = calculateBB100(stats);
         efficiencyValue.textContent = bb100.toFixed(2);
         efficiencyValue.className = 'widget-value ' + (bb100 > 0 ? 'positive' : bb100 < 0 ? 'negative' : '');
-        efficiencyDetails.textContent = 'BB/100';
+        efficiencyDetails.textContent = 'bb/100';
     } else {
         const hourly = calculateHourlyIncome(stats);
         const convertedHourly = convertCurrency(hourly);
         const formattedHourly = (convertedHourly < 0 ? '-' : '') + currencySymbol + Math.abs(convertedHourly).toFixed(2);
         efficiencyValue.textContent = formattedHourly;
         efficiencyValue.className = 'widget-value ' + (convertedHourly > 0 ? 'positive' : convertedHourly < 0 ? 'negative' : '');
-        efficiencyDetails.textContent = 'В час';
+        efficiencyDetails.textContent = 'в час';
     }
 
-    // ===== ОБЩИЙ РЕЗУЛЬТАТ =====
+    // ===== ПРОФИТ =====
 const result = stats.netResult || 0;
 const convertedResult = convertCurrency(result);
 const formattedResult = (convertedResult < 0 ? '-' : '') + currencySymbol + Math.abs(Math.round(convertedResult));
@@ -1180,7 +1180,7 @@ const formattedResult = (convertedResult < 0 ? '-' : '') + currencySymbol + Math
 // ✅ РАСЧЕТ ВЫИГРЫША В BB (с округлением до целых)
 const totalBBs = stats.totalBBs || 0;
 const bbRounded = Math.round(totalBBs);
-const bbFormatted = (bbRounded < 0 ? '-' : '') + Math.abs(bbRounded) + ' BB';
+const bbFormatted = (bbRounded < 0 ? '-' : '') + Math.abs(bbRounded) + ' bb';
 
 document.getElementById('netResult').textContent = formattedResult;
 document.getElementById('netResult').className = 'widget-value ' + (convertedResult > 0 ? 'positive' : convertedResult < 0 ? 'negative' : '');
@@ -1247,12 +1247,12 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
     }
 
     let html = '<div class="day-list-header" id="dayListHeader" style="cursor: pointer;" title="Кликните для копирования">';
-    html += '<span>Рабочий период</span>';
+    html += '<span>Дата</span>';
     html += '<span>Лимит</span>';
     html += '<span>Раздачи</span>';
-    html += '<span>Длительность</span>';
-    html += '<span>BB</span>';  
-    html += '<span>Результат</span>';
+    html += '<span>Время</span>';
+    html += '<span>Блайнды</span>';  
+    html += '<span>Профит</span>';
     html += '</div>';
 
     for (const day of filteredDays) {
@@ -1341,7 +1341,7 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
     // ============================================================
     const header = document.getElementById('dayListHeader');
     if (header) {
-        const groupColumns = [1, 2, 3]; // индексы: 1-Средний лимит, 2-Раздачи, 3-Длительность
+        const groupColumns = [1, 2, 3]; // индексы: 1-Средний лимит, 2-Раздачи, 3-Время
         const spans = header.querySelectorAll('span');
 
         spans.forEach((span, index) => {
@@ -1451,9 +1451,9 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
 
             navigator.clipboard.writeText(tsv).then(function() {
                 let message = '✅ Данные скопированы!';
-                if (isResultColumn) message = '✅ Результаты скопированы!';
-                else if (isBBColumn) message = '✅ BB скопированы!';
-                else if (isGroupColumn) message = '✅ Лимит, Раздачи, Длительность Скопированы!';
+                if (isResultColumn) message = '✅ Профит в буфере обмена!';
+                else if (isBBColumn) message = '✅ BB в буфере обмена!';
+                else if (isGroupColumn) message = '✅ Лимит, Раздачи, Время в буфере обмена!';
                 showNotification(message, 'success');
             }).catch(function() {
                 const textarea = document.createElement('textarea');
@@ -1463,9 +1463,9 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
                 let message = '✅ Данные скопированы!';
-                if (isResultColumn) message = '✅ Результаты скопированы!';
-                else if (isBBColumn) message = '✅ BB скопированы!';
-                else if (isGroupColumn) message = '✅ Лимит, Раздачи, Длительность Скопированы!';
+                if (isResultColumn) message = '✅ Профит в буфере обмена!';
+                else if (isBBColumn) message = '✅ BB в буфере обмена!';
+                else if (isGroupColumn) message = '✅ Лимит, Раздачи, Время в буфере обмена!';
                 showNotification(message, 'success');
             });
         });
