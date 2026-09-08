@@ -175,13 +175,13 @@
 }
 
 .chart-mode {
-  opacity: 0;
-  transition: opacity 0.3s ease;
   display: flex;
   gap: 4px;
   background: var(--bg-input);
   padding: 4px;
   border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .chart-mode.loaded {
@@ -189,7 +189,7 @@
 }
 
 .chart-btn {
-  opacity: 0;  
+  opacity: 0;
   padding: 6px 14px;
   border: none;
   border-radius: 6px;
@@ -197,7 +197,7 @@
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s ease, background var(--transition-speed), color var(--transition-speed), box-shadow var(--transition-speed);
 }
 
 .chart-btn.loaded {
@@ -260,6 +260,10 @@
 
 .day-list::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+.day-item {
+  border-bottom: 1px solid var(--border-color);
 }
 
 .day-item:last-child {
@@ -520,8 +524,6 @@ input[type="number"] {
   opacity: 1;
   transform: scale(1) translateY(0);
 }
-
-
 
 /* ===== Modal Header ===== */
 .modal-header {
@@ -888,6 +890,23 @@ input[type="number"] {
     color: var(--color-negative);
 }
 
+/* ===== BB colors ===== */
+.bb.positive {
+    color: var(--color-positive);
+}
+
+.bb.negative {
+    color: var(--color-negative);
+}
+
+.session-bb.positive {
+    color: var(--color-positive);
+}
+
+.session-bb.negative {
+    color: var(--color-negative);
+}
+
 /* ===== Кнопки в модалке ===== */
 .modal-actions .btn-primary {
   background: var(--color-accent);
@@ -1015,23 +1034,63 @@ input[type="number"] {
   top: 0;
   z-index: 10;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  justify-items: stretch;
-  gap: 0;
+  transition: background var(--transition-speed);
+  user-select: none;
+}
+
+/* Эффект при наведении на шапку */
+.day-list-header:hover {
+  background: var(--bg-hover);
+  cursor: pointer;
+}
+
+/* Подсветка колонок при наведении */
+.day-list-header span {
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background var(--transition-speed), color var(--transition-speed);
+  cursor: pointer;
+  position: relative;
+}
+
+.day-list-header span:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Для первой колонки (Рабочий период) — ничего не копируется */
+.day-list-header span:first-child:hover {
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  box-shadow: none !important;
+}
+
+/* Для мобильных устройств — убираем подсказки */
+@media (max-width: 768px) {
+  .day-list-header span::after {
+    display: none !important;
+  }
+  .day-list-header span:hover::after {
+    display: none !important;
+  }
 }
 
 .day-list-header span {
   text-align: center;
-  padding: 0 4px;
 }
 
+/* Рабочий период — не подсвечивается */
 .day-list-header span:first-child {
-  text-align: left;
+  cursor: default !important;
+  pointer-events: none;  /* ← отключаем все события мыши */
 }
 
 .day-list-header span:last-child {
   text-align: right;
 }
 
+/* ===== Day Item ===== */
 .day-item {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -1040,8 +1099,12 @@ input[type="number"] {
   border-bottom: 1px solid var(--border-color);
   cursor: pointer;
   transition: background var(--transition-speed);
-  justify-items: stretch;
-  gap: 0;
+  gap: 4px;
+  min-width: 0;
+}
+
+.day-item:hover {
+  background: var(--bg-hover);
 }
 
 .day-item > span {
@@ -1049,7 +1112,6 @@ input[type="number"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 0 4px;
 }
 
 .day-item > span:first-child {
@@ -1067,11 +1129,10 @@ input[type="number"] {
 
 /* Выделение выбранного дня */
 .day-item.active {
-  background: var(--bg-hover); /* Делаем фон дня чуть темнее/светлее */
-  border-left: 4px solid var(--color-accent); /* Синяя/зеленая полоса слева для акцента */
-  padding-left: 12px; /* Компенсируем отступ из-за полосы, чтобы текст не прыгал */
+  background: var(--bg-hover);
+  border-left: 4px solid var(--color-accent);
+  padding-left: 12px;
 }
-
 
 /* ===== Day Sessions ===== */
 .day-sessions {
@@ -1089,8 +1150,12 @@ input[type="number"] {
   font-size: 13px;
   margin: 4px 4px;
   border-bottom: 1px solid var(--border-color);
-  justify-items: stretch;
-  gap: 0;
+  gap: 4px;
+  min-width: 0;
+}
+
+.session-item:hover {
+  background: var(--bg-hover);
 }
 
 .session-item > span {
@@ -1098,7 +1163,6 @@ input[type="number"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 0 4px;
 }
 
 .session-item > span:first-child {
@@ -1109,7 +1173,7 @@ input[type="number"] {
   text-align: right;
 }
 
-/* ✅ ИСПРАВЛЕНО: Принудительно красим в серый цвет второй элемент (Лимит) и четвертый элемент (Длительность) */
+/* Принудительно красим в серый цвет второй элемент (Лимит) и четвертый элемент (Длительность) */
 .session-item > span:nth-child(2),
 .session-item > span:nth-child(4) {
   color: var(--text-secondary);
@@ -1126,7 +1190,6 @@ input[type="number"] {
 .session-result {
   font-weight: 600;
 }
-
 
 #aliasInput {
     width: 100%;
@@ -1255,11 +1318,10 @@ body {
     display: none !important;
 }
 
-
 /* Шапка календаря и контейнер месяцев */
 .flatpickr-months {
     background: var(--bg-secondary) !important;
-    border-radius: 0 !important;  /* ← добавить скругление сверху */
+    border-radius: 0 !important;
 }
 
 .flatpickr-months .flatpickr-month {
@@ -1268,7 +1330,6 @@ body {
     fill: var(--text-primary) !important;
 }
 
-/* ✅ ИСПРАВЛЕНО: Стилизуем непосредственно сам выпадающий список месяцев и его элементы */
 .flatpickr-monthDropdown-months {
     background: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
@@ -1285,7 +1346,6 @@ body {
     background: var(--bg-hover) !important;
 }
 
-/* ✅ ИСПРАВЛЕНО: Стилизуем выпадающие пункты (options) для Chromium-браузеров */
 .flatpickr-monthDropdown-months .flatpickr-monthDropdown-month {
     background-color: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
@@ -1301,7 +1361,6 @@ body {
     color: var(--text-primary) !important;
 }
 
-/* Стрелочки переключения месяцев */
 .flatpickr-months .flatpickr-prev-month,
 .flatpickr-months .flatpickr-next-month {
     color: var(--text-primary) !important;
@@ -1331,7 +1390,6 @@ body {
     color: var(--text-primary) !important;
 }
 
-/* Поле ввода (Инпут календаря на самом сайте) */
 .flatpickr-input {
     text-align: center;
     background: var(--bg-input) !important;
@@ -1354,32 +1412,25 @@ body {
     color: var(--text-muted) !important;
 }
 
-/* ✅ СТИЛИЗАЦИЯ ПЛЕЙСХОЛДЕРА ДЛЯ ВСЕХ БРАУЗЕРОВ */
-
-/* Для Chrome, Safari, Opera и Edge */
 .flatpickr-input::-webkit-input-placeholder {
     color: var(--text-muted) !important;
     opacity: 0.7;
 }
 
-/* Для Firefox */
 .flatpickr-input::-moz-placeholder {
     color: var(--text-muted) !important;
     opacity: 0.7;
 }
 
-/* Для Internet Explorer / Edge Legacy */
 .flatpickr-input:-ms-input-placeholder {
     color: var(--text-muted) !important;
     opacity: 0.7;
 }
 
-/* Современный стандарт */
 .flatpickr-input::placeholder {
     color: var(--text-muted) !important;
     opacity: 0.7;
 }
-
 
 .dark-theme .flatpickr-calendar,
 .dark-theme .flatpickr-monthDropdown-months,
@@ -1395,38 +1446,18 @@ body {
     color: var(--text-primary) !important;
 }
 
-/* ✅ ФИКС ДЛЯ FIREFOX & SAFARI: Принудительное наследование цветов выпадающими пунктами месяцев */
 .flatpickr-monthDropdown-months option {
     background-color: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
 }
 
-/* Фикс для активного/выбранного пункта в выпадающем списке */
 .flatpickr-monthDropdown-months option:checked,
 .flatpickr-monthDropdown-months option:hover {
     background-color: var(--bg-hover) !important;
     color: var(--text-primary) !important;
 }
 
-/* Плавное скрытие крестика на старте без потери его стилей и формы */
 #clearDateFilter {
     opacity: 0;
     transition: opacity var(--transition-speed) ease;
-}
-
-/* ===== BB colors ===== */
-.bb.positive {
-    color: var(--color-positive);
-}
-
-.bb.negative {
-    color: var(--color-negative);
-}
-
-.session-bb.positive {
-    color: var(--color-positive);
-}
-
-.session-bb.negative {
-    color: var(--color-negative);
 }
