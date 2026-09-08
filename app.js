@@ -40,6 +40,8 @@ async function initApp() {
     try {
         AppState.dataManager = new DataManager();
         
+        loadSettings();
+        
         // 📥 Загружаем сохранённые даты в самом начале, до настройки UI и событий
         const savedDateStart = localStorage.getItem('pokerDateStart');
         const savedDateEnd = localStorage.getItem('pokerDateEnd');
@@ -47,8 +49,6 @@ async function initApp() {
             AppState.dateStart = savedDateStart;
             AppState.dateEnd = savedDateEnd;
         }
-
-        loadSettings();
         
         const loaded = await AppState.dataManager.loadHands();
         if (!loaded) {
@@ -122,6 +122,11 @@ function loadSettings() {
     AppState.theme = settings.theme || 'light';
     applyTheme(AppState.theme);
     updateThemeIcon();
+
+    // ✅ ДОБАВЛЕНО: Восстанавливаем сохраненные алиасы из базы при старте приложения
+    if (settings.aliases) {
+        AppState.dataManager.aliases = settings.aliases;
+    }
 
     const dayStartHours = Math.floor(settings.dayStartHour);
     const dayStartMinutes = (settings.dayStartHour % 1) * 60;
@@ -254,6 +259,10 @@ function updatePlayerList() {
     } else if (currentValue && nicks.includes(currentValue)) {
         select.value = currentValue;
     }
+    // Принудительный разовый запуск пересчета ширины при первой загрузке списка
+    if (select.value) {
+        select.style.width = 'auto';
+    }
 }
 
 // Обновление фильтра лимитов (чекбоксы)
@@ -331,6 +340,8 @@ function setupEvents() {
     document.getElementById('playerSelect').addEventListener('change', function() {
         const nick = this.value;
         AppState.dataManager.setHero(nick, AppState.dataManager.aliases);
+        // Сбрасываем жесткую ширину принудительно, чтобы сработало поле field-sizing
+        this.style.width = 'auto'; 
         updateUI();
         updateChart();
     });
@@ -340,15 +351,41 @@ function setupEvents() {
         openModal('aliasModal');
     });
 
-    document.getElementById('saveAliases').addEventListener('click', function() {
-        const input = document.getElementById('aliasInput').value;
+        document.getElementById('saveAliases').addEventListener('click', function() {
+        const input = document.getElementById('aliasInput').value.trim();
         const aliases = input.split(',').map(s => s.trim()).filter(s => s);
+        
+        // 👥 Проверяем, если пользователь ничего не ввел
+        if (aliases.length === 0) {
+            // Если раньше алиасы были, а теперь поле стёрли — подтверждаем удаление
+            if (AppState.dataManager.aliases && AppState.dataManager.aliases.length > 0) {
+                if (confirm('Вы очистили поле. Удалить все привязанные алиасы?')) {
+                    AppState.dataManager.aliases = [];
+                    AppState.dataManager.updateSettings({ aliases: [] });
+                    AppState.dataManager.recalculateStats();
+                    updateUI();
+                    updateChart();
+                    closeModal('aliasModal');
+                    showNotification('🗑️ Алиасы удалены', 'info');
+                }
+            } else {
+                // Если поля и так были пустые, просто закрываем окно без лишних уведомлений
+                closeModal('aliasModal');
+            }
+            return; // Прерываем выполнение, чтобы не выскакивало ложное уведомление
+        }
+        
+        // ✅ Если ники введены — сохраняем в штатном режиме
         AppState.dataManager.aliases = aliases;
+        AppState.dataManager.updateSettings({ aliases: aliases });
         AppState.dataManager.recalculateStats();
         updateUI();
         updateChart();
         closeModal('aliasModal');
+        showNotification('👥 Алиасы успешно сохранены', 'success');
     });
+
+
 
     document.getElementById('cancelAliases').addEventListener('click', function() {
         closeModal('aliasModal');

@@ -48,6 +48,29 @@
   white-space: nowrap; /* Защищаем текст "Игрок:" от переноса */
 }
 
+/* Выпадающий список выбора игрока */
+#playerSelect {
+  field-sizing: content;
+  min-width: 30px; 
+  max-width: 350px; 
+  height: 36px; /* Заодно синхронизируем высоту с остальными кнопками шапки */
+  padding: 0 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  box-sizing: border-box;
+  cursor: pointer;
+  appearance: none; /* Убираем дефолтную стрелку браузера для кастомизации, если нужно */
+  -webkit-appearance: none;
+  text-align: center;
+}
+
+  /* Заставляет браузер красить раскрывающееся меню в цвет темы ДО того, как оно откроется */
+#playerSelect option {
+  padding: 8px;
+  text-align: left;
+}
 .player-selector {
   display: flex;
   align-items: center;
@@ -70,44 +93,110 @@
   flex-wrap: wrap;
 }
 
+/* Контейнер для пилюль */
 .limit-checkboxes {
   display: flex;
   align-items: center;
-  gap: 0px;
+  gap: 6px; /* Зазор между пилюлями внутри */
   flex-wrap: wrap;
-  padding: 0px 8px;
-  background: var(--bg-input);
-  border-radius: 6px;
-  height: 28px;
+  padding: 4px; /* Небольшой внутренний отступ для эстетики */
+  background: var(--bg-secondary); /* Убираем инпутовый фон, пилюли лежат на фоне шапки */
+  border-radius: 8px;
+  height: auto; /* Высота теперь подстраивается автоматически */
 }
 
+/* Сама пилюля (Лейбл-кнопка) */
 .checkbox-label {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 13px;
+  justify-content: center;
+  height: 28px; 
+  padding: 0 8px; /* Чуть увеличили боковые отступы, чтобы круглые края смотрелись гармонично */
+  font-size: 16px;
+  font-weight: 600;
   color: var(--text-secondary);
+  background: var(--bg-input); 
+  border: 1px solid var(--border-color);
+  
+  /* ✅ ИСПРАВЛЕНО: Задаем огромный радиус, чтобы кнопка стала идеальной округлой пилюлей */
+  border-radius: 100px; 
+  
   cursor: pointer;
   user-select: none;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: all var(--transition-speed);
+  transition: all var(--transition-speed) ease;
+  box-sizing: border-box;
 }
 
+/* Эффект наведения на неактивную пилюлю */
 .checkbox-label:hover {
   background: var(--bg-hover);
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
-  cursor: pointer;
-  accent-color: var(--color-accent);
-}
-
-.checkbox-label input[type="checkbox"]:checked + span {
   color: var(--text-primary);
+  border-color: var(--text-muted);
 }
+
+/* ❌ СКРЫВАЕМ СТАНДАРТНУЮ ГАЛОЧКУ: Физически убираем квадратик чекбокса из видимости */
+.checkbox-label input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+/* ===== Вариант 10: Покерная фишка с двойным контуром (БЕЗ ДВИЖЕНИЯ) ===== */
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px; 
+  padding: 0 14px; 
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-input); 
+  border-radius: 100px; 
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--transition-speed) ease;
+  box-sizing: border-box;
+
+  /* ✅ КРИТИЧЕСКИ ВАЖНО: Изначально задаем рамку в 2 пикселя, чтобы при активации размер не менялся */
+  border: 2px solid var(--border-color); 
+}
+
+/* Эффект наведения на неактивную пилюлю */
+.checkbox-label:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+/* Активное состояние (Лимит выбран) */
+.checkbox-label:has(input[type="checkbox"]:checked) {
+  background-color: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+  font-weight: 600;
+  
+  /* ✅ ТОЛЩИНА СОВПАДАЕТ (2px): Меняется только тип на double и цвет */
+  border: 2px double rgba(66, 153, 225, 0.5) !important;        
+  
+  /* Исправленная мягкая тень */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transform: translateY(0.5px); 
+}
+
+/* Эффект наведения на активную двойную пилюлю */
+.checkbox-label:has(input[type="checkbox"]:checked):hover {
+  /* ✅ ИСПРАВЛЕНО: Меняем только цвет рамки, не трогая тип и толщину */
+  border-color: rgba(66, 153, 225, 0.8) !important;
+  
+  /* Исправленный синтаксис тени (слово double удалено) */
+  box-shadow: inset 0 1px 2px rgba(66, 153, 225, 0.15),
+              0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+
 
 /* ===== Widgets ===== */
 .widgets {
@@ -117,7 +206,8 @@
   margin-bottom: 16px;
   width: 100%;
   max-width: 100%;
-  overflow: hidden;  
+  overflow: hidden;
+  overflow: visible;     /* Разрешаем теням выходить за границы контейнера */
 }
 
 .widget {
@@ -360,10 +450,11 @@
   white-space: nowrap;
 }
 .setting-group input[type="number"] {
-  width: 60px;
+  width: 45px;
+  height: 28px
 }
 .setting-group input[type="time"] {
-  width: 80px;
+  height: 28px
 }
 
 .footer-center {
@@ -554,9 +645,14 @@ input[type="number"] {
   gap: 10px;
 }
 
-.modal-header h3::before {
+/* Персональная иконка для окна Импорта */
+#importModal .modal-header h3::before {
   content: '📊';
-  font-size: 24px;
+}
+
+/* Персональная иконка для окна Алиасов */
+#aliasModal .modal-header h3::before {
+  content: '🔍';
 }
 
 .modal-close {
@@ -954,13 +1050,13 @@ input[type="number"] {
 /* ===== Theme Toggle Button ===== */
 #themeToggle {
   font-size: 18px;
-  width: 38px;
-  height: 38px;
-  display: flex;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   background: var(--bg-input);
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid var(--border-color);
   transition: all var(--transition-speed);
 }
@@ -972,21 +1068,23 @@ input[type="number"] {
 
 /* ===== Alias Button ===== */
 #aliasBtn {
-  font-size: 16px;
-  width: 32px;
-  height: 32px;
-  display: flex;
+  font-size: 18px;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   background: var(--bg-input);
   border-radius: 6px;
   border: 1px solid var(--border-color);
   transition: all var(--transition-speed);
+  line-height: 1;
+  padding: 0;
 }
 
 #aliasBtn:hover {
   background: var(--bg-hover);
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 /* ===== Кнопка Готово ===== */
@@ -997,12 +1095,83 @@ input[type="number"] {
   margin-top: 20px;
 }
 
-#closeImportBtn {
-  min-width: 120px;
-  display: flex;
-  justify-content: center;
+/* ===== Контурная кнопка Импорта (Стильная и умеренная) ===== */
+#importBtn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
   align-items: center;
-  padding: 10px 32px;
+  justify-content: center;
+  border-radius: 6px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all var(--transition-speed);
+
+  /* Полная синхронизация с кнопкой Сброса в базовом состоянии */
+  background-color: var(--bg-input) !important;
+  color: var(--color-accent) !important; /* Синим подсвечен только сам текст */
+  border: 1px solid var(--border-color);
+}
+
+#importBtn:hover {
+  /* ✅ ИСПРАВЛЕНО: При наведении плавно наливается сочным акцентным цветом темы */
+  background-color: var(--color-accent) !important;
+  border-color: var(--color-accent) !important;
+  color: #ffffff !important; /* Текст становится контрастным белым */
+}
+
+#importBtn:active {
+  transform: translateY(0);
+}
+
+/* ===== Нейтральная кнопка Сброса (Спокойный дизайн) ===== */
+#resetBtn {
+  height: 36px;
+  padding: 0 14px 0 12px; /* Чуть уменьшили левый отступ, чтобы компенсировать пробел после иконки */
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;               /* ✅ ДОБАВЛЕНО: Создает аккуратный фиксированный зазор в 6px между корзиной и текстом */
+  border-radius: 6px;
+  box-sizing: border-box;
+  background-color: var(--bg-input) !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all var(--transition-speed);
+  line-height: 1;         /* Убирает шрифтовые сдвиги по вертикали */
+}
+
+#resetBtn:hover {
+  background-color: var(--color-negative) !important;
+  border-color: var(--color-negative) !important;
+  color: #ffffff !important; 
+}
+
+
+/* ===== Theme Toggle Button ===== */
+#themeToggle {
+  font-size: 18px;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-input);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-speed);
+  line-height: 1;
+  padding: 0;
+}
+
+#themeToggle:hover {
+  background: var(--bg-hover);
+  transform: scale(1.05);
 }
 
 /* ===== Day List Header ===== */
@@ -1192,15 +1361,18 @@ input[type="number"] {
 
 #aliasInput {
     width: 100%;
+    height: 36px;
     text-align: center;
-    resize: vertical;
-    padding: 10px;
+    resize: none;
+    padding: 0 12px;
     background: var(--bg-input);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
     border-radius: 6px;
     font-size: 14px;
     font-family: 'Roboto', sans-serif;
+    box-sizing: border-box; /* ✅ КРИТИЧЕСКИ ВАЖНО: удерживает высоту ровно 36px вместе с padding */
+    line-height: 34px    
 }
 
 #aliasInput:focus {

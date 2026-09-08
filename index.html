@@ -35,7 +35,7 @@
         <option value="">Выберите игрока</option>
     </select>
     <button id="aliasBtn" class="btn-icon" title="Алиасы (дополнительные ники)">
-        🥷
+        🔍
     </button>
 </div>
             <div class="limit-filter">
@@ -57,7 +57,7 @@
         </svg>
         Импорт
     </button>
-    <button id="resetBtn" class="btn-secondary">Сброс</button>
+    <button id="resetBtn" class="btn">🗑️ Сброс</button>
     <button id="themeToggle" class="btn-icon" title="Переключить тему">
         ☀️
     </button>
@@ -119,14 +119,6 @@
         <footer class="footer">
             <div class="footer-left">
                 <div class="setting-group">
-                    <label>Начало:</label>
-                    <input type="time" id="dayStart" value="06:00" step="60" class="time-input-only" />
-                </div>
-                <div class="setting-group">
-                    <label>Разрыв (м.):</label>
-                    <input type="number" id="sessionBreak" value="5" min="1" max="15" />
-                </div>
-                <div class="setting-group">
     <select id="timezoneOffset" class="select" style="width: 85px; min-width: 80px;">
         <option value="-12">UTC-12</option>
         <option value="-11">UTC-11</option>
@@ -154,6 +146,15 @@
         <option value="12">UTC+12</option>
     </select>
 </div>
+                <div class="setting-group">
+                    <label>Начало дня:</label>
+                    <input type="time" id="dayStart" value="06:00" step="60" class="time-input-only" />
+                </div>
+                <div class="setting-group">
+                    <label>Разрывы (мин.)</label>
+                    <input type="number" id="sessionBreak" value="5" min="1" max="15" />
+                </div>
+                
             </div>
             <div class="footer-center">
                 <div class="currency-rates">
@@ -186,12 +187,12 @@
     <div id="aliasModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Алиас</h3>
+                <h3>Алиасы</h3>
                 <button class="modal-close" id="aliasModalClose">&times;</button>
             </div>
             <div class="modal-body">
                 <p>Введите дополнительные ники через запятую:</p>
-                <textarea id="aliasInput" rows="2" placeholder="nick1, nick2, nick3" style="width: 100%; text-align: center; resize: vertical; padding-top: 15px; padding-bottom: 5px;"></textarea>               <div class="modal-actions">
+                <textarea id="aliasInput" rows="2" placeholder="nick1, nick2, nick3" style="width: 100%; text-align: center; resize: vertical; padding-top: 15px; padding-bottom: 0px;"></textarea>               <div class="modal-actions">
                     <button id="saveAliases" class="btn-primary">Сохранить</button>
                     <button id="cancelAliases" class="btn-secondary">Отмена</button>
                 </div>
