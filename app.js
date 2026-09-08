@@ -464,17 +464,19 @@ function setupEvents() {
         return;
     }
     
-    const minutes = parseInt(value);
-    if (!isNaN(minutes) && minutes >= 0) {
-        AppState.dataManager.updateSettings({
-            sessionBreakMinutes: minutes
-        });
-        updateUI();
-        updateDayList(getSelectedLimits());
-    } else {
-        // Если ввели что-то невалидное, возвращаем предыдущее значение
-        this.value = AppState.dataManager.settings.sessionBreakMinutes || 5;
+    let minutes = parseInt(value);
+    
+    // ✅ Если ввели 0 или меньше — ставим 1
+    if (isNaN(minutes) || minutes < 1) {
+        minutes = 1;
+        this.value = 1;
     }
+    
+    AppState.dataManager.updateSettings({
+        sessionBreakMinutes: minutes
+    });
+    updateUI();
+    updateDayList(getSelectedLimits());
 });
 
     document.getElementById('timezoneOffset').addEventListener('change', function() {
