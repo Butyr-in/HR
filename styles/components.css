@@ -1073,11 +1073,20 @@ input[type="number"] {
 .day-list-header span:first-child {
   text-align: left;
   cursor: default !important;
-  pointer-events: none;  /* ← отключаем все события мыши */
+  pointer-events: none;
 }
 
+/* Профит — не подсвечивается */
 .day-list-header span:last-child {
   text-align: right;
+  cursor: default !important;
+  pointer-events: none;
+}
+
+.day-list-header span:last-child:hover {
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  box-shadow: none !important;
 }
 
 /* ===== Day Item ===== */

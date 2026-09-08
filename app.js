@@ -1406,99 +1406,88 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
         header.addEventListener('click', function(e) {
     const target = e.target;
     
-    // ✅ Если кликнули не по колонке (<span>) — ничего не делаем
     if (target.tagName !== 'SPAN') {
         return;
     }
     
     const columnIndex = Array.from(header.children).indexOf(target);
-            const columnText = target?.textContent?.trim() || '';
+    const columnText = target?.textContent?.trim() || '';
 
-            // Определяем тип копирования
-            const isResultColumn = columnText === 'Результат' || columnIndex === 5;
-            const isBBColumn = columnText === 'BB' || columnIndex === 4;
-            const isGroupColumn = [1, 2, 3].includes(columnIndex);
+    // ✅ Только нужные колонки
+    const isBBColumn = columnIndex === 4;
+    const isGroupColumn = [1, 2, 3].includes(columnIndex);
 
-            const startStr = AppState.dateStart || filteredDays[0].day;
-            const endStr = AppState.dateEnd || filteredDays[filteredDays.length - 1].day;
+    // ❌ Выходим, если кликнули по любой другой колонке
+    if (!isBBColumn && !isGroupColumn) {
+        return;
+    }
 
-            const startDate = new Date(startStr);
-            const endDate = new Date(endStr);
+    const startStr = AppState.dateStart || filteredDays[0].day;
+    const endStr = AppState.dateEnd || filteredDays[filteredDays.length - 1].day;
 
-            const daysMap = {};
-            for (const day of filteredDays) {
-                daysMap[day.day] = day;
+    const startDate = new Date(startStr);
+    const endDate = new Date(endStr);
+
+    const daysMap = {};
+    for (const day of filteredDays) {
+        daysMap[day.day] = day;
+    }
+
+    const rows = [];
+    const currentDate = new Date(startDate.getTime());
+
+    while (currentDate <= endDate) {
+        const year = currentDate.getFullYear();
+        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const dayObj = String(currentDate.getDate()).padStart(2, '0');
+        const dateKey = `${year}-${month}-${dayObj}`;
+
+        const dayData = daysMap[dateKey];
+
+        if (dayData) {
+            if (isBBColumn) {
+                const dayBB = dayData.totalBBs || 0;
+                const bbFormatted = (dayBB < 0 ? '-' : '') + Math.abs(dayBB).toString().replace('.', ',');
+                rows.push([bbFormatted]);
+            } else if (isGroupColumn) {
+                const avgLimit = (dayData.totalHands > 0 ? 
+                    (dayData.hands.reduce((sum, h) => sum + h.limit, 0) / dayData.totalHands) : 0
+                ).toString().replace('.', ',');
+                const timeMinutes = (dayData.totalTime / 60).toString().replace('.', ',');
+                rows.push([avgLimit, dayData.totalHands, timeMinutes]);
             }
-
-            const rows = [];
-            const currentDate = new Date(startDate.getTime());
-
-            while (currentDate <= endDate) {
-                const year = currentDate.getFullYear();
-                const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-                const dayObj = String(currentDate.getDate()).padStart(2, '0');
-                const dateKey = `${year}-${month}-${dayObj}`;
-
-                const dayData = daysMap[dateKey];
-
-                if (dayData) {
-                    if (isResultColumn) {
-                        const convertedResult = convertCurrency(dayData.netResult);
-                        const resultStr = (convertedResult < 0 ? '-' : '') + currencySymbol + Math.abs(convertedResult).toFixed(2);
-                        rows.push([resultStr]);
-                    } else if (isBBColumn) {
-                        const dayBB = dayData.totalBBs || 0;
-                        const bbFormatted = (dayBB < 0 ? '-' : '') + Math.abs(Math.round(dayBB));
-                        rows.push([bbFormatted]);
-                    } else if (isGroupColumn) {
-                        // 3 колонки: средний лимит, раздачи, время
-                        const avgLimit = (dayData.totalHands > 0 ? 
-                            (dayData.hands.reduce((sum, h) => sum + h.limit, 0) / dayData.totalHands) : 0
-                        ).toFixed(2).replace('.', ',');
-                        
-                        const timeMinutes = (dayData.totalTime / 60).toFixed(2).replace('.', ',');
-                        
-                        rows.push([avgLimit, dayData.totalHands, timeMinutes]);
-                    } else {
-                        // Первая колонка (Рабочий период) — не копируется
-                        rows.push(['']);
-                    }
-                } else {
-                    // Пустой день
-                    if (isResultColumn || isBBColumn) {
-                        rows.push(['']);
-                    } else if (isGroupColumn) {
-                        rows.push(['', '', '']);
-                    } else {
-                        rows.push(['']);
-                    }
-                }
-
-                currentDate.setDate(currentDate.getDate() + 1);
+        } else {
+            // Пустой день
+            if (isBBColumn) {
+                rows.push(['']);
+            } else if (isGroupColumn) {
+                rows.push(['', '', '']);
             }
+        }
 
-            const tsv = rows.map(row => row.join('\t')).join('\n');
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
 
-            navigator.clipboard.writeText(tsv).then(function() {
-                let message = '✅ Данные скопированы!';
-                if (isResultColumn) message = '✅ Профит в буфере обмена!';
-                else if (isBBColumn) message = '✅ BB в буфере обмена!';
-                else if (isGroupColumn) message = '✅ Лимит, Раздачи, Время в буфере обмена!';
-                showNotification(message, 'success');
-            }).catch(function() {
-                const textarea = document.createElement('textarea');
-                textarea.value = tsv;
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textarea);
-                let message = '✅ Данные скопированы!';
-                if (isResultColumn) message = '✅ Профит в буфере обмена!';
-                else if (isBBColumn) message = '✅ BB в буфере обмена!';
-                else if (isGroupColumn) message = '✅ Лимит, Раздачи, Время в буфере обмена!';
-                showNotification(message, 'success');
-            });
-        });
+    const tsv = rows.map(row => row.join('\t')).join('\n');
+
+    navigator.clipboard.writeText(tsv).then(function() {
+        let message = '✅ Данные скопированы!';
+        if (isBBColumn) message = '✅ BB в буфере обмена!';
+        else if (isGroupColumn) message = '✅ Лимит, Раздачи, Время в буфере обмена!';
+        showNotification(message, 'success');
+    }).catch(function() {
+        const textarea = document.createElement('textarea');
+        textarea.value = tsv;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        let message = '✅ Данные скопированы!';
+        if (isBBColumn) message = '✅ BB в буфере обмена!';
+        else if (isGroupColumn) message = '✅ Лимит, Раздачи, Время в буфере обмена!';
+        showNotification(message, 'success');
+    });
+});
     }
 
     container.querySelectorAll('.day-item').forEach(function(item) {
