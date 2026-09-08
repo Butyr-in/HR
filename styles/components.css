@@ -1082,6 +1082,7 @@ input[type="number"] {
 
 /* Рабочий период — не подсвечивается */
 .day-list-header span:first-child {
+  text-align: left;
   cursor: default !important;
   pointer-events: none;  /* ← отключаем все события мыши */
 }
