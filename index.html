@@ -153,18 +153,22 @@
             </div>
             <div class="footer-center">
                 <div class="currency-rates">
+    <div class="currency-item" style="background: transparent; padding: 4px 4px 4px 4px;">
+    <span class="currency-symbol">€</span>
+    <span class="currency-value" style="font-size: 13px; color: var(--text-primary); padding: 0 0px;">1 =</span>
+</div>
     <div class="currency-item">
-        <span class="currency-symbol">€</span>
-        <input type="number" id="eurRate" step="0.01" value="1.00" class="currency-input" disabled />
-    </div>
+    <span class="currency-symbol">$</span>
+    <input type="text" id="usdRate" value="1.10" class="currency-input" inputmode="decimal" pattern="[0-9.,]+" />
+</div>
+    <div class="currency-item" style="background: transparent; padding: 4px 4px 4px 4px;">
+    <span class="currency-symbol">€</span>
+    <span class="currency-value" style="font-size: 13px; color: var(--text-primary); padding: 0 0px;">1 =</span>
+</div>
     <div class="currency-item">
-        <span class="currency-symbol">$</span>
-        <input type="number" id="usdRate" step="0.01" value="1.10" class="currency-input" />
-    </div>
-    <div class="currency-item">
-        <span class="currency-symbol">₽</span>
-        <input type="number" id="rubRate" step="0.01" value="90.00" class="currency-input" />
-    </div>
+    <span class="currency-symbol">₽</span>
+    <input type="text" id="rubRate" value="90.00" class="currency-input" inputmode="decimal" pattern="[0-9.,]+" />
+</div>
     <button id="updateRatesBtn" class="btn-sm">Обновить</button>
 </div>
             </div>

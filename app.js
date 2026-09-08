@@ -136,11 +136,17 @@ function loadSettings() {
     }
 
     if (settings.currencyRates) {
-        const usdRate = document.getElementById('usdRate');
-        const rubRate = document.getElementById('rubRate');
-        if (usdRate) usdRate.value = settings.currencyRates.USD || 1.10;
-        if (rubRate) rubRate.value = settings.currencyRates.RUB || 90.00;
+    const usdRate = document.getElementById('usdRate');
+    const rubRate = document.getElementById('rubRate');
+    if (usdRate) {
+        const usdVal = settings.currencyRates.USD || 1.10;
+        usdRate.value = usdVal.toFixed(2);  // ← без replace, просто toFixed
     }
+    if (rubRate) {
+        const rubVal = settings.currencyRates.RUB || 90.00;
+        rubRate.value = rubVal.toFixed(2);
+    }
+}
 
     if (settings.widgetModes) {
         AppState.widgetModes = settings.widgetModes;
@@ -1941,19 +1947,20 @@ function getCorrectedDate(date) {
 
 function saveCurrencyRates() {
     const usdEl = document.getElementById('usdRate');
-    const eurEl = document.getElementById('eurRate');
     const rubEl = document.getElementById('rubRate');
 
-    // Безопасно собираем значения, только если элементы физически отрисованы в DOM
     const rates = {
-        USD: usdEl ? (parseFloat(usdEl.value) || 1.10) : 1.10,
-        EUR: eurEl ? (parseFloat(eurEl.value) || 1.00) : 1.00,
-        RUB: rubEl ? (parseFloat(rubEl.value) || 90.00) : 90.00
+        USD: usdEl ? (parseFloat(usdEl.value.replace(',', '.')) || 1.10) : 1.10,
+        EUR: 1.00,
+        RUB: rubEl ? (parseFloat(rubEl.value.replace(',', '.')) || 90.00) : 90.00
     };
 
     AppState.dataManager.updateSettings({ currencyRates: rates });
     
-    // Перерисовываем интерфейс и графики с новыми коэффициентами конвертации
+    // ✅ Принудительно отображаем с точкой
+    if (usdEl) usdEl.value = rates.USD.toFixed(2);
+    if (rubEl) rubEl.value = rates.RUB.toFixed(2);
+    
     updateUI();
     if (AppState.chart && typeof AppState.chart.update === 'function') {
         updateChart();
@@ -1973,7 +1980,8 @@ async function fetchExchangeRates() {
             const usd = data.rates.USD || 1.10;
             const rub = data.rates.RUB || 90.00;
             
-            document.getElementById('usdRate').value = usd.toFixed(4);
+            // ✅ Принудительно с точкой
+            document.getElementById('usdRate').value = usd.toFixed(2);
             document.getElementById('rubRate').value = rub.toFixed(2);
             
             saveCurrencyRates();
