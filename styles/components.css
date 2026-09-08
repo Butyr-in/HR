@@ -225,7 +225,6 @@
   position: relative;
 }
 
-/* ===== Day List ===== */
 .day-list {
   background: var(--bg-secondary);
   border-radius: 12px;
@@ -237,9 +236,10 @@
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
-  flex: 0 1 auto;
-  scrollbar-width: none;  /* Firefox - полностью скрываем */
-  display: grid;
+  flex: 1;  /* ← было flex: 0 1 auto, стало flex: 1 */
+  scrollbar-width: none;
+  display: flex;  /* ← было display: grid, стало flex */
+  flex-direction: column;
 }
 
 /* Chrome, Safari, Edge - полностью скрываем */
@@ -773,10 +773,14 @@ input[type="number"] {
   font-size: 18px;
   font-weight: 500;
   color: var(--text-muted);
-  place-self: center;
+  /* place-self: center; ← УДАЛИТЬ или закомментировать */
   padding: 40px 20px;
   text-align: center;
   line-height: 1.6;
+  flex: 1;  /* ← ДОБАВИТЬ, чтобы растягивался */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ===== Responsive ===== */
