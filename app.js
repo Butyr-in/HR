@@ -2069,7 +2069,7 @@ async function fetchExchangeRates() {
         console.error('Error fetching rates:', error);
         showNotification('❌ Ошибка получения курсов', 'error');
     } finally {
-        btn.textContent = 'Обновить курсы';
+        btn.textContent = 'Обновить';
         btn.disabled = false;
     }
 }
