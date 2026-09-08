@@ -225,7 +225,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
-  flex: 1;
+  flex: 0 1 auto;
   scrollbar-width: none;  /* Firefox - полностью скрываем */
   display: grid;
 }
@@ -248,10 +248,6 @@
 
 .day-list::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
-}
-
-.day-item {
-  border-bottom: 1px solid var(--border-color);
 }
 
 .day-item:last-child {
@@ -760,11 +756,14 @@ input[type="number"] {
 
 /* ===== Empty State ===== */
 .empty-state {
-  font-size: 24px;          /* Делаем шрифт заметно крупнее */
-  font-weight: 500;         /* Придаем тексту приятную плотность */
-  color: var(--text-muted); 
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-muted);
   place-self: center;
-  }
+  padding: 40px 20px;
+  text-align: center;
+  line-height: 1.6;
+}
 
 /* ===== Responsive ===== */
 @media (max-width: 1200px) {
@@ -989,7 +988,7 @@ input[type="number"] {
 /* ===== Day List Header ===== */
 .day-list-header {
   display: grid;
-  grid-template-columns: 1.0fr 1.0fr 1.0fr 1.0fr 1fr;
+  grid-template-columns: repeat(6, 1fr);
   padding: 12px 16px;
   padding-right: 10px;
   background: var(--bg-secondary);
@@ -1004,10 +1003,13 @@ input[type="number"] {
   top: 0;
   z-index: 10;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  justify-items: stretch;
+  gap: 0;
 }
 
 .day-list-header span {
   text-align: center;
+  padding: 0 4px;
 }
 
 .day-list-header span:first-child {
@@ -1018,23 +1020,24 @@ input[type="number"] {
   text-align: right;
 }
 
-/* ===== Day Item ===== */
 .day-item {
   display: grid;
-  grid-template-columns: 1.0fr 1.0fr 1.0fr 1.0fr 1fr;
+  grid-template-columns: repeat(6, 1fr);
   padding: 8px 16px;
   align-items: center;
   border-bottom: 1px solid var(--border-color);
   cursor: pointer;
   transition: background var(--transition-speed);
-}
-
-.day-item:hover {
-  background: var(--bg-hover);
+  justify-items: stretch;
+  gap: 0;
 }
 
 .day-item > span {
   text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
 }
 
 .day-item > span:first-child {
@@ -1066,22 +1069,24 @@ input[type="number"] {
 
 .session-item {
   display: grid;
+  grid-template-columns: repeat(6, 1fr);
   border-radius: 6px;
-  grid-template-columns: 1.0fr 1.0fr 1.0fr 1.0fr 1fr;
   padding: 5px 12px;
   align-items: center;
   background: var(--bg-primary);
   font-size: 13px;
-  margin: 4px 4px; /* Боковые зазоры */
-  border-bottom: 1px solid var(--border-color); /* Вместо толстой рамки делаем элегантный разделитель */
-}
-
-.session-item:hover {
-  background: var(--bg-hover);
+  margin: 4px 4px;
+  border-bottom: 1px solid var(--border-color);
+  justify-items: stretch;
+  gap: 0;
 }
 
 .session-item > span {
   text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
 }
 
 .session-item > span:first-child {
@@ -1395,4 +1400,21 @@ body {
 #clearDateFilter {
     opacity: 0;
     transition: opacity var(--transition-speed) ease;
+}
+
+/* ===== BB colors ===== */
+.bb.positive {
+    color: var(--color-positive);
+}
+
+.bb.negative {
+    color: var(--color-negative);
+}
+
+.session-bb.positive {
+    color: var(--color-positive);
+}
+
+.session-bb.negative {
+    color: var(--color-negative);
 }

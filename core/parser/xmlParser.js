@@ -134,20 +134,17 @@ function calculateResult(players, playerName) {
     const win = player.win;
     const bet = player.bet;
     
-    // Если игрок выиграл
+    // Если игрок выиграл (или поделил банк)
     if (win > 0) {
-        // Ищем победителя (игрока с win > 0)
-        const winner = players.find(p => p.win > 0);
+        // Рейк берем строго у текущего игрока, а не у первого попавшегося через find()
+        const rake = player.rake || 0;
         
-        // Rake победителя
-        const rake = winner ? winner.rake : 0;
-        
-        // Сумма bet всех оппонентов
+        // Сумма bet всех оппонентов за столом
         const opponentsBet = players
             .filter(p => p.name !== playerName)
             .reduce((sum, p) => sum + p.bet, 0);
         
-        // Наше вложение
+        // Наше реальное вложение в этот банк
         const ourInvested = win + rake - opponentsBet;
         
         return win - ourInvested;
@@ -157,14 +154,59 @@ function calculateResult(players, playerName) {
     }
 }
 
-// ===== ПАРСИМ ДАТЫ =====
+// ===== ПАРСИМ ДАТЫ (только 2 формата) =====
 function parseDateTime(dateStr) {
-    const parts = dateStr.split(' ');
-    const datePart = parts[0];
-    const timePart = parts[1];
-
-    const dateParts = datePart.split('-').map(Number);
-    const timeParts = timePart.split(':').map(Number);
-
-    return new Date(dateParts[2], dateParts[0] - 1, dateParts[1], timeParts[0], timeParts[1], timeParts[2]);
+    if (!dateStr) return new Date();
+    
+    dateStr = dateStr.trim();
+    
+    // Пробуем найти время
+    let timeParts = [0, 0, 0];
+    const timeMatch = dateStr.match(/(\d{1,2}):(\d{2}):(\d{2})/);
+    if (timeMatch) {
+        timeParts = [parseInt(timeMatch[1]), parseInt(timeMatch[2]), parseInt(timeMatch[3])];
+        dateStr = dateStr.replace(timeMatch[0], '').trim();
+    }
+    
+    // Извлекаем числа даты
+    const numbers = dateStr.match(/\d+/g);
+    if (!numbers || numbers.length < 3) {
+        console.warn('⚠️ Не удалось распарсить дату:', dateStr);
+        return new Date();
+    }
+    
+    let year, month, day;
+    
+    // Определяем формат по позиции 4-значного года
+    if (numbers[0].length === 4) {
+        // Год в начале → YYYY-MM-DD
+        year = parseInt(numbers[0]);
+        month = parseInt(numbers[1]);
+        day = parseInt(numbers[2]);
+    } else if (numbers[2].length === 4) {
+        // Год в конце → DD-MM-YYYY или MM-DD-YYYY
+        const first = parseInt(numbers[0]);
+        const second = parseInt(numbers[1]);
+        
+        // Если первое число от 1 до 12, а второе от 1 до 31 → это месяц-день
+        if (first >= 1 && first <= 12 && second >= 1 && second <= 31) {
+            month = first;
+            day = second;
+        } else {
+            // Иначе день-месяц
+            day = first;
+            month = second;
+        }
+        year = parseInt(numbers[2]);
+    } else {
+        // Если ничего не подошло — пробуем стандартный new Date()
+        const d = new Date(dateStr);
+        if (!isNaN(d.getTime())) {
+            return d;
+        }
+        console.warn('⚠️ Не удалось распарсить дату:', dateStr);
+        return new Date();
+    }
+    
+    return new Date(year, month - 1, day, timeParts[0], timeParts[1], timeParts[2]);
 }

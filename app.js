@@ -1073,7 +1073,7 @@ function calculateBB100(stats) {
     const hands = stats.totalHands;
     const netResult = stats.netResult || 0;
     
-    return (netResult / (bb * hands)) * 100;
+    return (stats.totalBBs / stats.totalHands) * 100;
 }
 
 // Расчёт дохода в час
@@ -1130,7 +1130,7 @@ function updateWidgets(stats) {
         const bb100 = calculateBB100(stats);
         efficiencyValue.textContent = bb100.toFixed(2);
         efficiencyValue.className = 'widget-value ' + (bb100 > 0 ? 'positive' : bb100 < 0 ? 'negative' : '');
-        efficiencyDetails.textContent = 'bb/100';
+        efficiencyDetails.textContent = 'BB/100';
     } else {
         const hourly = calculateHourlyIncome(stats);
         const convertedHourly = convertCurrency(hourly);
@@ -1141,12 +1141,19 @@ function updateWidgets(stats) {
     }
 
     // ===== ОБЩИЙ РЕЗУЛЬТАТ =====
-    const result = stats.netResult || 0;
+const result = stats.netResult || 0;
 const convertedResult = convertCurrency(result);
 const formattedResult = (convertedResult < 0 ? '-' : '') + currencySymbol + Math.abs(Math.round(convertedResult));
+
+// ✅ РАСЧЕТ ВЫИГРЫША В BB (с округлением до целых)
+const totalBBs = stats.totalBBs || 0;
+const bbRounded = Math.round(totalBBs);
+const bbFormatted = (bbRounded < 0 ? '-' : '') + Math.abs(bbRounded) + ' BB';
+
 document.getElementById('netResult').textContent = formattedResult;
 document.getElementById('netResult').className = 'widget-value ' + (convertedResult > 0 ? 'positive' : convertedResult < 0 ? 'negative' : '');
-// Обновляем подпись валюты
+
+// Обновляем подпись
 const currencyName = document.getElementById('resultCurrency');
 if (currencyName) {
     const names = {
@@ -1154,7 +1161,9 @@ if (currencyName) {
         usd: 'USD',
         rub: 'RUB'
     };
-    currencyName.textContent = names[AppState.widgetModes.result] || 'EUR';
+    const currencyLabel = names[AppState.widgetModes.result] || 'EUR';
+    // ✅ Показываем только BB с округлением
+    currencyName.textContent = bbFormatted;
 }
 }
 
@@ -1210,6 +1219,7 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
     html += '<span>Средний лимит</span>';
     html += '<span>Раздачи</span>';
     html += '<span>Длительность</span>';
+    html += '<span>BB</span>';  
     html += '<span>Результат</span>';
     html += '</div>';
 
@@ -1245,41 +1255,51 @@ if (day.sessions && day.sessions.length > 0) {
             timeDisplay = formatTime(totalSeconds);
         }
 
+        // Рассчитываем BB для дня
+        const dayBB = day.totalBBs || 0;
+        const bbFormatted = (dayBB < 0 ? '-' : '') + Math.abs(Math.round(dayBB));
+        const bbClass = dayBB > 0 ? 'positive' : dayBB < 0 ? 'negative' : '';
+
         const activeClass = isExpanded ? ' active' : '';
-html += '<div class="day-item' + activeClass + '" data-day="' + day.day + '">';
+        html += '<div class="day-item' + activeClass + '" data-day="' + day.day + '">';
         html += '<span class="day-date">' + startStr + (endStr ? ' ' + endStr : '') + '</span>';
         html += '<span class="limit">NL' + avgLimit + '</span>';
         html += '<span class="hands-count">' + day.totalHands + '</span>';
         html += '<span class="time">' + timeDisplay + '</span>';
+        html += '<span class="bb ' + bbClass + '">' + bbFormatted + '</span>';  // ← BB
         html += '<span class="result ' + resultClass + '">' + (convertedDayResult < 0 ? '-' : '') + currencySymbol + Math.abs(convertedDayResult).toFixed(2) + '</span>';
         html += '</div>';
 
         html += '<div class="day-sessions' + (isExpanded ? '' : ' hidden') + '" id="sessions-' + day.day + '">';
 
         if (isExpanded) {
-            for (const session of day.sessions) {
-                const sessionClass = session.netResult > 0 ? 'positive' : session.netResult < 0 ? 'negative' : '';
-                const sessionAvgLimit = calculateAverageLimitForSession(session);
-                const convertedSessionResult = convertCurrency(session.netResult);
+    for (const session of day.sessions) {
+        const sessionClass = session.netResult > 0 ? 'positive' : session.netResult < 0 ? 'negative' : '';
+        const sessionAvgLimit = calculateAverageLimitForSession(session);
+        const convertedSessionResult = convertCurrency(session.netResult);
+        const sessionBB = session.totalBBs || 0;
+        const sessionBBFormatted = (sessionBB < 0 ? '-' : '') + Math.abs(Math.round(sessionBB));
+        const sessionBBClass = sessionBB > 0 ? 'positive' : sessionBB < 0 ? 'negative' : '';
 
-                // Время сессии в зависимости от режима карточки
-                const sessionDuration = session.duration;
-                let sessionTimeDisplay;
-                if (AppState.widgetModes.time === 'minutes') {
-                    sessionTimeDisplay = Math.round(sessionDuration / 60) + ' мин';
-                } else {
-                    sessionTimeDisplay = formatTime(sessionDuration);
-                }
-
-                html += '<div class="session-item">';
-                html += '<span class="session-time">' + formatTimeSession(session.startTime, session.endTime) + '</span>';
-                html += '<span class="session-limit">NL' + sessionAvgLimit + '</span>';
-                html += '<span class="session-hands">' + session.handsCount + '</span>';
-                html += '<span class="session-duration">' + sessionTimeDisplay + '</span>';
-                html += '<span class="session-result ' + sessionClass + '">' + (convertedSessionResult < 0 ? '-' : '') + currencySymbol + Math.abs(convertedSessionResult).toFixed(2) + '</span>';
-                html += '</div>';
-            }
+        // Время сессии
+        const sessionDuration = session.duration;
+        let sessionTimeDisplay;
+        if (AppState.widgetModes.time === 'minutes') {
+            sessionTimeDisplay = Math.round(sessionDuration / 60) + ' мин';
+        } else {
+            sessionTimeDisplay = formatTime(sessionDuration);
         }
+
+        html += '<div class="session-item">';
+        html += '<span class="session-time">' + formatTimeSession(session.startTime, session.endTime) + '</span>';
+        html += '<span class="session-limit">NL' + sessionAvgLimit + '</span>';
+        html += '<span class="session-hands">' + session.handsCount + '</span>';
+        html += '<span class="session-duration">' + sessionTimeDisplay + '</span>';
+        html += '<span class="session-bb ' + sessionBBClass + '">' + sessionBBFormatted + '</span>';
+        html += '<span class="session-result ' + sessionClass + '">' + (convertedSessionResult < 0 ? '-' : '') + currencySymbol + Math.abs(convertedSessionResult).toFixed(2) + '</span>';
+        html += '</div>';
+    }
+}
 
         html += '</div>';
     }
@@ -1287,40 +1307,94 @@ html += '<div class="day-item' + activeClass + '" data-day="' + day.day + '">';
     container.innerHTML = html;
 
     // Добавляем обработчик клика на заголовок
+        // Добавляем обработчик клика на заголовок
     const header = document.getElementById('dayListHeader');
-    if (header) {
-        header.addEventListener('click', function() {
-            const rows = [];
-            
-            for (const day of filteredDays) {
-                const avgLimit = (day.totalHands > 0 ? 
-                    (day.hands.reduce((sum, h) => sum + h.limit, 0) / day.totalHands) : 0
-                ).toFixed(2).replace('.', ',');
-                
-                const timeMinutes = (day.totalTime / 60).toFixed(2).replace('.', ',');
-                
-                rows.push([
-                    avgLimit,
-                    day.totalHands,
-                    timeMinutes
-                ]);
+if (header) {
+    header.addEventListener('click', function(e) {
+        if (filteredDays.length === 0) {
+            showNotification('ℹ️ Нет данных для копирования', 'info');
+            return;
+        }
+
+        // ✅ Определяем, по какой колонке кликнули
+        const target = e.target;
+        const columnIndex = Array.from(header.children).indexOf(target);
+        const columnText = target?.textContent?.trim() || '';
+
+        // ✅ Если кликнули по "Результат" — копируем только результат
+        const isResultColumn = columnText === 'Результат' || columnIndex === 4;
+
+        // Определяем границы календаря
+        const startStr = AppState.dateStart || filteredDays[0].day;
+        const endStr = AppState.dateEnd || filteredDays[filteredDays.length - 1].day;
+
+        const startDate = new Date(startStr);
+        const endDate = new Date(endStr);
+
+        const daysMap = {};
+        for (const day of filteredDays) {
+            daysMap[day.day] = day;
+        }
+
+        const rows = [];
+        const currentDate = new Date(startDate.getTime());
+        const currencySymbol = getCurrencySymbol();
+
+        while (currentDate <= endDate) {
+            const year = currentDate.getFullYear();
+            const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+            const dayObj = String(currentDate.getDate()).padStart(2, '0');
+            const dateKey = `${year}-${month}-${dayObj}`;
+
+            const dayData = daysMap[dateKey];
+
+            if (dayData) {
+                if (isResultColumn) {
+                    // ✅ ТОЛЬКО РЕЗУЛЬТАТ (1 колонка)
+                    const convertedResult = convertCurrency(dayData.netResult);
+                    const resultStr = (convertedResult < 0 ? '-' : '') + currencySymbol + Math.abs(convertedResult).toFixed(2);
+                    rows.push([resultStr]);
+                } else {
+                    // ✅ 3 колонки: средний лимит, раздачи, время
+                    const avgLimit = (dayData.totalHands > 0 ? 
+                        (dayData.hands.reduce((sum, h) => sum + h.limit, 0) / dayData.totalHands) : 0
+                    ).toFixed(2).replace('.', ',');
+                    
+                    const timeMinutes = (dayData.totalTime / 60).toFixed(2).replace('.', ',');
+                    
+                    rows.push([avgLimit, dayData.totalHands, timeMinutes]);
+                }
+            } else {
+                // Пустой день
+                if (isResultColumn) {
+                    rows.push(['']);
+                } else {
+                    rows.push(['', '', '']);
+                }
             }
-            
-            const tsv = rows.map(row => row.join('\t')).join('\n');
-            
-            navigator.clipboard.writeText(tsv).then(function() {
-                showNotification('✅ Данные скопированы!', 'success');
-            }).catch(function() {
-                const textarea = document.createElement('textarea');
-                textarea.value = tsv;
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textarea);
-                showNotification('✅ Данные скопированы!', 'success');
-            });
+
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        // Собираем в TSV
+        const tsv = rows.map(row => row.join('\t')).join('\n');
+
+        navigator.clipboard.writeText(tsv).then(function() {
+            const message = isResultColumn ? '✅ Результаты скопированы!' : '✅ Данные скопированы!';
+            showNotification(message, 'success');
+        }).catch(function() {
+            const textarea = document.createElement('textarea');
+            textarea.value = tsv;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            const message = isResultColumn ? '✅ Результаты скопированы!' : '✅ Данные скопированы!';
+            showNotification(message, 'success');
         });
-    }
+    });
+}
+
 
     container.querySelectorAll('.day-item').forEach(function(item) {
         item.addEventListener('click', function() {
@@ -1709,19 +1783,19 @@ function updateChartByHands(hands) {
             return sum + (player ? calculateResult(h.players, hero) : 0);
         }, 0);
         
-        // Сначала накапливаем чистый итог в системной валюте (EUR)
-        if (AppState.chartType === 'bar') {
-            data.push(parseFloat(convertCurrency(chunkResult).toFixed(2)));
-        } else {
-            cumulative += chunkResult;
+            // Сначала накапливаем чистый итог в системной валюте (EUR)
+            if (AppState.chartType === 'bar') {
+                // Столбчатый график: показываем каждую точку отдельно
+                data.push(parseFloat(convertCurrency(chunkResult).toFixed(2)));
+            } else {
+                // Линейный график: накопленный результат
+                cumulative += chunkResult;
+                // Конвертируем в выбранную валюту ТОЛЬКО финальную точку перед выводом на график
+                data.push(parseFloat(convertCurrency(cumulative).toFixed(2)));
+            }
 
-        labels.push(String(i + 1));
-        // Конвертируем в выбранную валюту ТОЛЬКО финальную точку перед выводом на график
-        data.push(parseFloat(convertCurrency(cumulative).toFixed(2)));
-    }
-
-        labels.push(String(i + 1));
-    }
+            labels.push(String(i + 1));
+        }
 
     AppState.chart.data.labels = labels;
     AppState.chart.data.datasets[0].data = data;

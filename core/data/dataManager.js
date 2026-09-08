@@ -294,6 +294,7 @@ class DataManager {
             }
         }
         stats = tempCalculator.getStats(breakMinutes);
+        stats.totalBBs = tempCalculator.stats.totalBBs;
     }
 
     // ВСЕГДА фильтруем по лимитам
@@ -331,6 +332,7 @@ class DataManager {
         }
     }
     stats = tempCalculator.getStats(breakMinutes);
+    stats.totalBBs = tempCalculator.stats.totalBBs;
 }
 
     return stats;
@@ -341,18 +343,21 @@ class DataManager {
     const sessionBreak = settings.sessionBreakMinutes || this.settings.sessionBreakMinutes;
     const selectedLimits = settings.limits;
 
+    // ✅ ИСПРАВЛЕНО
     const heroHands = this.hands.filter(hand => {
-        if (selectedLimits === null) {
-            // "Все" выбрано - показываем все
-        } else if (selectedLimits.length === 0) {
-            return false;
-        } else {
-            if (!selectedLimits.includes('NL' + hand.limit)) {
+        if (!hand || !hand.players) return false;
+        
+        const hasHero = hand.players.some(p => p.name === this.heroNick || this.aliases.includes(p.name));
+        if (!hasHero) return false;
+        
+        if (selectedLimits && selectedLimits.length > 0) {
+            const limitKey = 'NL' + hand.limit;
+            if (!selectedLimits.includes(limitKey)) {
                 return false;
             }
         }
         
-        return hand.players && hand.players.some(p => p.name === this.heroNick || this.aliases.includes(p.name));
+        return true;
     });
 
     // Сортируем руки по времени начала
@@ -366,36 +371,37 @@ class DataManager {
 
         const correctedDate = new Date(hand.startDate);
         correctedDate.setHours(correctedDate.getHours() + (this.settings.timezoneOffset || 0));
-        
-        // Определяем день, к которому относится эта рука
         const dayKey = this.getDayKey(correctedDate, dayStartHour);
 
         if (!daysMap[dayKey]) {
             daysMap[dayKey] = {
                 date: dayKey,
                 hands: [],
-                netResult: 0
+                netResult: 0,
+                totalBBs: 0
             };
         }
 
         const result = calculateResult(hand.players, this.heroNick);
+        const bbSize = hand.limit / 100;
+        const handBB = result / bbSize;
+
         daysMap[dayKey].hands.push({
             ...hand,
             result: result
         });
         daysMap[dayKey].netResult += result;
+        daysMap[dayKey].totalBBs += handBB;
     }
 
     const result = [];
     for (const dayKey in daysMap) {
         const dayData = daysMap[dayKey];
         const sortedHands = dayData.hands.slice().sort((a, b) => a.startDate - b.startDate);
-        
-        // Разбиваем руки дня на сессии с учётом границ дня
         const sessions = this.groupIntoSessions(sortedHands, sessionBreak, dayStartHour);
         
-        const dayStartTime = sortedHands[0].startDate;
-        const dayEndTime = sortedHands[sortedHands.length - 1].startDate;
+        const dayStartTime = sortedHands[0]?.startDate;
+        const dayEndTime = sortedHands[sortedHands.length - 1]?.startDate;
 
         result.push({
             day: dayKey,
@@ -404,13 +410,13 @@ class DataManager {
             netResult: dayData.netResult,
             totalHands: sortedHands.length,
             totalTime: sessions.reduce((sum, s) => sum + s.duration, 0),
+            totalBBs: dayData.totalBBs,
             dayStartTime: dayStartTime,
             dayEndTime: dayEndTime
         });
     }
 
     result.sort((a, b) => a.day.localeCompare(b.day));
-
     return result;
 }
 
@@ -473,6 +479,7 @@ class DataManager {
                 endTime: getCorrectedDate(lastHandDate),
                 duration: (lastHandDate - firstHandDate) / 1000,
                 netResult: currentSession.reduce((sum, h) => sum + h.result, 0),
+                totalBBs: currentSession.reduce((sum, h) => sum + (h.result / (h.limit / 100)), 0),
                 handsCount: currentSession.length
             });
             currentSession = [currentHand];
@@ -491,6 +498,7 @@ class DataManager {
             endTime: getCorrectedDate(lastHandDate),
             duration: (lastHandDate - firstHandDate) / 1000,
             netResult: currentSession.reduce((sum, h) => sum + h.result, 0),
+            totalBBs: currentSession.reduce((sum, h) => sum + (h.result / (h.limit / 100)), 0),
             handsCount: currentSession.length
         });
     }

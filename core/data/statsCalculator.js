@@ -15,6 +15,7 @@ class StatsCalculator {
             totalWon: 0,
             totalLost: 0,
             netResult: 0,
+            totalBBs: 0,
             limits: {},
             days: {},
             handsByCards: {}
@@ -28,6 +29,10 @@ class StatsCalculator {
         if (hand.result > 0) stats.totalWon++;
         if (hand.result < 0) stats.totalLost++;
         stats.netResult += hand.result;
+
+        // РАССЧИТЫВАЕМ БЛАЙНДЫ ДЛЯ КАЖДОЙ РАЗДАЧИ И СУММИРУЕМ:
+        const bbSizeInEuro = hand.limit / 100; // Например, 0.10 для NL10
+        stats.totalBBs += hand.result / bbSizeInEuro; 
 
         const limitKey = 'NL' + hand.limit;
         if (!stats.limits[limitKey]) {
@@ -79,6 +84,7 @@ class StatsCalculator {
             totalWon: 0,
             totalLost: 0,
             netResult: 0,
+            totalBBs: stats.totalBBs,
             limits: {},
             vpipHands: 0,
             pfrHands: 0,
@@ -110,6 +116,7 @@ class StatsCalculator {
         totalWon: stats.totalWon,
         totalLost: stats.totalLost,
         netResult: stats.netResult,
+        totalBBs: stats.totalBBs,
         limits: stats.limits,
         vpipHands: stats.vpipHands,
         pfrHands: stats.pfrHands,
