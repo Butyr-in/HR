@@ -1816,11 +1816,9 @@ function toggleChartType() {
     if (AppState.chartType === 'line') {
         AppState.chartType = 'bar';
         localStorage.setItem('pokerChartType', 'bar'); // Сохраняем в память
-        showNotification('📊 Столбчатый график', 'info');
     } else {
         AppState.chartType = 'line';
         localStorage.removeItem('pokerChartType'); // Очищаем кэш для дефолтного значения
-        showNotification('📈 Линейный график', 'info');
     }
     
     // Передаем новый тип в структуру библиотеки
