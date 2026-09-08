@@ -59,6 +59,7 @@
   align-items: center;
   gap: 10px;
   flex-shrink: 0; /* Запрещаем кнопкам импорта и смены темы сжиматься до нечитаемости */
+  margin-left: auto; /* ← ДОБАВИТЬ СЮДА. Это заставит флекс-контейнер всегда отталкивать кнопки до упора вправо */
 }
 
 /* ===== Limit Checkboxes ===== */
@@ -805,15 +806,13 @@ input[type="number"] {
     align-items: stretch; /* Растягиваем внутренние блоки на всю ширину */
     gap: 16px;
     padding: 16px;
+    align-items: center;
   }
 
   .header-left {
     width: 100%;
     align-items: flex-start;
-  }
-    /* Смещаем блок кнопок (Тема, Импорт) в правый угол верхней строки */
-  .header-right {
-    margin-left: auto;
+    align-items: center;
   }
 
   .header-controls {
