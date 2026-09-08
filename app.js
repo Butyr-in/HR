@@ -151,6 +151,16 @@ function loadSettings() {
     if (settings.widgetModes) {
         AppState.widgetModes = settings.widgetModes;
     }
+    // ✅ Устанавливаем часовой пояс ПОСЛЕ загрузки всех настроек
+    const timezoneOffset = document.getElementById('timezoneOffset');
+    if (timezoneOffset) {
+        const savedOffset = AppState.dataManager.settings.timezoneOffset;
+        if (savedOffset !== undefined && savedOffset !== null) {
+            timezoneOffset.value = savedOffset;
+        } else {
+            timezoneOffset.value = 0;  // ← значение по умолчанию
+        }
+    }
 }
 
 // Применение темы
@@ -1552,6 +1562,12 @@ function toggleWidgetMode(type) {
 
 function initChart() {
     const ctx = document.getElementById('chartCanvas').getContext('2d');
+
+    // ✅ Скрываем загрузку и показываем canvas
+    const loading = document.getElementById('chartLoading');
+    const canvas = document.getElementById('chartCanvas');
+    if (loading) loading.style.display = 'none';
+    if (canvas) canvas.style.display = 'block';
 
     AppState.chart = new Chart(ctx, {
         type: AppState.chartType, // ✅ Восстанавливаем тип из памяти при старте

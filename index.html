@@ -89,21 +89,26 @@
 </section>
 
         <!-- График -->
-        <section class="chart-section">
-            <div class="chart-controls">
-                <div class="chart-mode">
-                    <button class="chart-btn active" data-mode="hands">По раздачам</button>
-                    <button class="chart-btn" data-mode="days">По дням</button>
-                </div>
-                <div class="chart-period">
-    <input type="text" id="dateRange" style="opacity: 0; transition: opacity 0.2s ease;">
-    <button id="clearDateFilter" class="btn-sm">✕</button>
-</div>
-            </div>
-            <div class="chart-container">
-                <canvas id="chartCanvas"></canvas>
-            </div>
-        </section>
+<section class="chart-section">
+    <div class="chart-controls">
+        <div class="chart-mode">
+            <button class="chart-btn active" data-mode="hands">По раздачам</button>
+            <button class="chart-btn" data-mode="days">По дням</button>
+        </div>
+        <div class="chart-period">
+            <input type="text" id="dateRange" style="opacity: 0; transition: opacity 0.2s ease;">
+            <button id="clearDateFilter" class="btn-sm">✕</button>
+        </div>
+    </div>
+    <div class="chart-container" id="chartContainer" style="position: relative;">
+        <!-- Загрузка -->
+        <div id="chartLoading" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 18px; font-weight: 500; z-index: 1; background: var(--bg-secondary);">
+            Загрузка данных...
+        </div>
+        <!-- Canvas -->
+        <canvas id="chartCanvas" style="position: relative; z-index: 2;"></canvas>
+    </div>
+</section>
 
         <!-- Список дней -->
         <section id="dayList" class="day-list">
@@ -135,7 +140,6 @@
         <option value="-3">UTC-3</option>
         <option value="-2">UTC-2</option>
         <option value="-1">UTC-1</option>
-        <option value="0" selected>UTC+0</option>
         <option value="1">UTC+1</option>
         <option value="2">UTC+2</option>
         <option value="3">UTC+3</option>
