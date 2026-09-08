@@ -796,56 +796,7 @@ input[type="number"] {
   }
 }
 
-@media (max-width: 768px) {
-  .header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .header-left {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .header-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .widgets {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .footer {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .footer-left {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .footer-center {
-    justify-content: center;
-  }
-  .footer-right {
-    justify-content: center;
-  }
-  
-  .chart-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .chart-period {
-    flex-wrap: wrap;
-  }
-}
 
-@media (max-width: 480px) {
-  .app {
-    padding: 8px;
-  }
-  .widget-value {
-    font-size: 22px;
-  }
-}
 
 /* ===== App ===== */
 .app {

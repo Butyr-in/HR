@@ -114,16 +114,15 @@
         <footer class="footer">
             <div class="footer-left">
                 <div class="setting-group">
-                    <label>Начало дня:</label>
+                    <label>Начало:</label>
                     <input type="time" id="dayStart" value="06:00" step="60" class="time-input-only" />
                 </div>
                 <div class="setting-group">
-                    <label>Разрыв (минуты):</label>
+                    <label>Разрыв (м.):</label>
                     <input type="number" id="sessionBreak" value="5" min="0" max="15" />
                 </div>
                 <div class="setting-group">
-    <label>Часовой пояс:</label>
-    <select id="timezoneOffset" class="select">
+    <select id="timezoneOffset" class="select" style="width: 85px; min-width: 80px;">
         <option value="-12">UTC-12</option>
         <option value="-11">UTC-11</option>
         <option value="-10">UTC-10</option>

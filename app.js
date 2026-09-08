@@ -1447,7 +1447,7 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
                 let message = '✅ Данные скопированы!';
                 if (isResultColumn) message = '✅ Результаты скопированы!';
                 else if (isBBColumn) message = '✅ BB скопированы!';
-                else if (isGroupColumn) message = '✅ 3 колонки скопированы!';
+                else if (isGroupColumn) message = '✅ Лимит, Раздачи, Длительность Скопированы!';
                 showNotification(message, 'success');
             }).catch(function() {
                 const textarea = document.createElement('textarea');
@@ -1459,7 +1459,7 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
                 let message = '✅ Данные скопированы!';
                 if (isResultColumn) message = '✅ Результаты скопированы!';
                 else if (isBBColumn) message = '✅ BB скопированы!';
-                else if (isGroupColumn) message = '✅ 3 колонки скопированы!';
+                else if (isGroupColumn) message = '✅ Лимит, Раздачи, Длительность Скопированы!';
                 showNotification(message, 'success');
             });
         });
