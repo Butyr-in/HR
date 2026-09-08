@@ -174,26 +174,23 @@ function applyTheme(theme) {
         app.className = 'app';
     }
 
-    // ✅ НАДЁЖНОЕ ОБНОВЛЕНИЕ ЦВЕТОВ ГРАФИКА ДЛЯ ВСЕХ ТЕМ
+    // ✅ НАДЁЖНОЕ ОБНОВЛЕНИЕ МЯГКИХ ЦВЕТОВ ГРАФИКА ДЛЯ ВСЕХ ТЕМ
     if (AppState.chart && AppState.chart.options && AppState.chart.options.scales) {
-        // Запускаем небольшую задержку в 10мс, чтобы браузер успел применить CSS-классы темы к body
         setTimeout(function() {
-            // Считываем актуальный цвет текста для текущей темы (хоть светлой, хоть тёмной)
-            const currentTextColor = getComputedStyle(document.body).getPropertyValue('--text-primary').trim() || '#2d3748';
+            // Считываем второстепенный цвет текста (в тёмной теме это приятный #a0aec0)
+            const currentTextColor = getComputedStyle(document.body).getPropertyValue('--text-secondary').trim() || '#718096';
             
-            // Напрямую перезаписываем цвета осей в конфигурации Chart.js
             AppState.chart.options.scales.x.ticks.color = currentTextColor;
             AppState.chart.options.scales.y.ticks.color = currentTextColor;
             
-            // На всякий случай делаем шрифт чуть жирнее для лучшей читаемости на мобильных
             AppState.chart.options.scales.x.ticks.font = { weight: '600', size: 11 };
             AppState.chart.options.scales.y.ticks.font = { weight: '600', size: 11 };
             
-            // Перерисовываем график с новыми сочными цветами
             AppState.chart.update();
         }, 10);
     }
 }
+
 
 
 // Переключение темы
@@ -1674,13 +1671,12 @@ function initChart() {
             scales: {
     x: { 
         grid: { display: false },
-        // Восстанавливаем отступы осей при старте, если сохранен режим столбцов
         offset: AppState.chartType === 'bar',
         bounds: AppState.chartType === 'bar' ? 'ticks' : 'data',
         ticks: {
-            // ✅ ИСПРАВЛЕНО: Вместо жесткого цвета сразу считываем сочный цвет из CSS при старте страницы
+            // ✅ Считываем аккуратный и мягкий цвет текста из CSS текущей темы
             color: function() {
-                return getComputedStyle(document.body).getPropertyValue('--text-primary').trim() || '#2d3748';
+                return getComputedStyle(document.body).getPropertyValue('--text-secondary').trim() || '#718096';
             },
             font: { weight: '600', size: 11 }
         }
@@ -1690,9 +1686,9 @@ function initChart() {
             color: 'rgba(0,0,0,0.05)'
         },
         ticks: {
-            // ✅ ИСПРАВЛЕНО: И для оси Y тоже считываем сочный цвет темы прямо при инициализации
+            // ✅ И для оси Y подтягиваем этот же цвет
             color: function() {
-                return getComputedStyle(document.body).getPropertyValue('--text-primary').trim() || '#2d3748';
+                return getComputedStyle(document.body).getPropertyValue('--text-secondary').trim() || '#718096';
             },
             font: { weight: '600', size: 11 },
             callback: function(value) {
@@ -1702,6 +1698,7 @@ function initChart() {
         }
     }
 },
+
 
             onHover: function(event, elements) {
                 if (elements && elements.length) {
