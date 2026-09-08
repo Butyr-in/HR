@@ -4,7 +4,7 @@
 // ============================================================
 
 const AppState = {
-    currentView: 'hands',
+    currentView: localStorage.getItem('pokerCurrentView') || 'days',
     chartType: localStorage.getItem('pokerChartType') || 'line',
     dateStart: null,
     dateEnd: null,
@@ -66,6 +66,31 @@ async function initApp() {
         setupEvents();
         updateUI();
         initChart();
+
+        // ✅ Восстанавливаем активную кнопку из localStorage
+const savedView = localStorage.getItem('pokerCurrentView') || 'days';
+AppState.currentView = savedView;
+
+// ✅ Добавляем класс loaded для контейнера и кнопок
+document.querySelector('.chart-mode').classList.add('loaded');
+
+document.querySelectorAll('.chart-btn').forEach(function(b) {
+    b.classList.remove('active');
+    if (b.dataset.mode === savedView) {
+        b.classList.add('active');
+    }
+    b.classList.add('loaded');
+});
+
+// Если ни одна кнопка не совпала — активируем "По дням"
+if (!document.querySelector('.chart-btn.active')) {
+    const daysBtn = document.querySelector('.chart-btn[data-mode="days"]');
+    if (daysBtn) {
+        daysBtn.classList.add('active');
+        AppState.currentView = 'days';
+        localStorage.setItem('pokerCurrentView', 'days');
+    }
+}
 
         try {
             const count = await AppState.dataManager.getHandsCount();
@@ -402,6 +427,7 @@ function setupEvents() {
             });
             this.classList.add('active');
             AppState.currentView = this.dataset.mode;
+            localStorage.setItem('pokerCurrentView', AppState.currentView);
             updateChart();
         });
     });
