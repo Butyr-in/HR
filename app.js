@@ -9,6 +9,10 @@ const AppState = {
     dateStart: null,
     dateEnd: null,
     expandedDay: null,
+    expandedSession: null,
+    // 📊 Состояние сортировки раздач внутри сессий
+    handsSortCol: 'time', // 'time', 'limit', 'cards', 'gamecode', 'bb', 'profit'
+    handsSortAsc: true,   // true - по возрастанию, false - по убыванию
     widgetModes: {
         hands: 'total',
         time: 'hours',
@@ -1315,6 +1319,7 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
     html += '<span>Раздачи</span>';
     html += '<span>Время</span>';
     html += '<span>Блайнды</span>';  
+    html += '<span style="color:var(--text-muted); cursor:default !important; pointer-events:none;">Рейк</span>'; 
     html += '<span>Профит</span>';
     html += '</div>';
 
@@ -1323,7 +1328,10 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
         const resultClass = day.netResult > 0 ? 'positive' : day.netResult < 0 ? 'negative' : '';
         const avgLimit = calculateAverageLimitForDay(day);
         
+        const dayHandsArray = day.hands || [];
+        const dayRawRake = dayHandsArray.reduce((sum, h) => sum + (h.heroRake || 0), 0);
         const convertedDayResult = convertCurrency(day.netResult);
+        const convertedDayRake = convertCurrency(dayRawRake);
         
         let startStr = formatDate(day.day);
         let endStr = '';
@@ -1359,42 +1367,124 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
         html += '<span class="hands-count">' + day.totalHands + '</span>';
         html += '<span class="time">' + timeDisplay + '</span>';
         html += '<span class="bb ' + bbClass + '">' + bbFormatted + '</span>';
+        html += '<span class="rake" style="color: var(--text-secondary); text-align: center;">' + currencySymbol + convertedDayRake.toFixed(2) + '</span>';
         html += '<span class="result ' + resultClass + '">' + (convertedDayResult < 0 ? '-' : '') + currencySymbol + Math.abs(convertedDayResult).toFixed(2) + '</span>';
         html += '</div>';
 
-        html += '<div class="day-sessions' + (isExpanded ? '' : ' hidden') + '" id="sessions-' + day.day + '">';
+                html += '<div class="day-sessions' + (isExpanded ? '' : ' hidden') + '" id="sessions-' + day.day + '">';
 
-        if (isExpanded) {
-            for (const session of day.sessions) {
+                                if (isExpanded) {
+            day.sessions.forEach((session, sessionIdx) => {
                 const sessionClass = session.netResult > 0 ? 'positive' : session.netResult < 0 ? 'negative' : '';
                 const sessionAvgLimit = calculateAverageLimitForSession(session);
                 const convertedSessionResult = convertCurrency(session.netResult);
+                const convertedSessionRake = convertCurrency(session.totalRake || 0);
 
-                // ✅ BB для сессии
                 const sessionBB = session.totalBBs || 0;
                 const sessionBBFormatted = (sessionBB < 0 ? '-' : '') + Math.abs(Math.round(sessionBB)) + ' bb';
                 const sessionBBClass = sessionBB > 0 ? 'positive' : sessionBB < 0 ? 'negative' : '';
 
                 const sessionDuration = session.duration;
-                let sessionTimeDisplay;
-                if (AppState.widgetModes.time === 'minutes') {
-                    sessionTimeDisplay = Math.round(sessionDuration / 60) + ' мин';
-                } else {
-                    sessionTimeDisplay = formatTime(sessionDuration);
-                }
+                let sessionTimeDisplay = AppState.widgetModes.time === 'minutes' 
+                    ? Math.round(sessionDuration / 60) + ' мин' 
+                    : formatTime(sessionDuration);
 
-                html += '<div class="session-item">';
-                html += '<span class="session-time">' + formatTimeSession(session.startTime, session.endTime) + '</span>';
-                html += '<span class="session-limit">NL' + sessionAvgLimit + '</span>';
-                html += '<span class="session-hands">' + session.handsCount + '</span>';
-                html += '<span class="session-duration">' + sessionTimeDisplay + '</span>';
+                const sessionKey = `${day.day}_${sessionIdx}`;
+                const isSessionExpanded = AppState.expandedSession === sessionKey;
+
+                // 1. Строка сессии
+                html += '<div class="session-item' + (isSessionExpanded ? ' active' : '') + '" data-session-key="' + sessionKey + '" style="cursor:pointer; position: sticky; top: 49px; z-index: 9; background: var(--bg-primary);">';
+                html += '<span>' + formatTimeSession(session.startTime, session.endTime) + '</span>'; 
+                html += '<span>NL' + sessionAvgLimit + '</span>';
+                html += '<span>' + session.handsCount + '</span>';
+                html += '<span>' + sessionTimeDisplay + '</span>';
                 html += '<span class="session-bb ' + sessionBBClass + '">' + sessionBBFormatted + '</span>';
+                html += '<span class="session-rake" style="color: var(--text-muted); text-align: center;">' + currencySymbol + convertedSessionRake.toFixed(2) + '</span>';
                 html += '<span class="session-result ' + sessionClass + '">' + (convertedSessionResult < 0 ? '-' : '') + currencySymbol + Math.abs(convertedSessionResult).toFixed(2) + '</span>';
                 html += '</div>';
-            }
+
+                // 2. Обертка для раздач
+                html += '<div class="session-hands-list' + (isSessionExpanded ? '' : ' hidden') + '" style="background: rgba(0,0,0,0.015); border-top: 1px dashed var(--border-color); padding-bottom: 4px; overflow: visible;">';
+                
+                // 📊 Интерактивная шапка таблицы раздач сессии
+                const getSortIcon = (col) => AppState.handsSortCol === col ? (AppState.handsSortAsc ? ' 🔼' : ' 🔽') : '';
+                
+                                // 📊 Интерактивная шапка таблицы раздач сессии (Выравнивание и Шрифт без эмодзи)
+                // Вместо стрелочек генерируем инлайновый стиль для подсветки активной колонки
+                const getColumnStyle = (col) => {
+                    const isSorted = AppState.handsSortCol === col;
+                    // Если колонка активна — делаем шрифт ярким/светлым, если нет — приглушённым
+                    return isSorted 
+                        ? 'color: var(--text-primary); font-weight: 700; cursor: pointer; user-select: none;' 
+                        : 'color: var(--text-muted); font-weight: 600; cursor: pointer; user-select: none; opacity: 0.6;';
+                };
+                
+                // Синхронизировали боковые отступы (padding: 6px 16px) и убрали эмодзи
+                html += '<div class="session-item" style="background:var(--bg-secondary); border:none; box-shadow:0 2px 4px rgba(0,0,0,0.03); cursor:default; font-size:11px; margin: 0; padding: 6px 12px; text-transform:uppercase; letter-spacing:0.5px; position: sticky; top: 75px; z-index: 8;">';
+                html += '<span class="sort-hand-col" data-col="time" style="text-align:left; ' + getColumnStyle('time') + '">Время</span>';
+                html += '<span class="sort-hand-col" data-col="limit" style="text-align:center; ' + getColumnStyle('limit') + '">Лимит</span>';
+                html += '<span class="sort-hand-col" data-col="cards" style="text-align:center; ' + getColumnStyle('cards') + '">Карты</span>';
+                html += '<span class="sort-hand-col" data-col="gamecode" style="text-align:center; ' + getColumnStyle('gamecode') + '">ID Раздачи</span>';
+                html += '<span class="sort-hand-col" data-col="bb" style="text-align:center; ' + getColumnStyle('bb') + '">Блайнды</span>';
+                html += '<span class="sort-hand-col" data-col="rake" style="text-align:center; ' + getColumnStyle('rake') + '">Рейк</span>'; 
+                html += '<span class="sort-hand-col" data-col="profit" style="text-align:right; ' + getColumnStyle('profit') + '">Профит</span>';
+                html += '</div>';
+
+
+                // Сортируем раздачи перед выводом на экран (функция sortSessionHands будет объявлена ниже)
+                const sortedHands = typeof sortSessionHands === 'function' ? sortSessionHands(session.hands, AppState.handsSortCol, AppState.handsSortAsc) : session.hands;
+
+                sortedHands.forEach(hand => {
+                    const handResult = hand.result || 0;
+                    const handRake = hand.heroRake || 0;
+                    const convertedHandResult = convertCurrency(handResult);
+                    const convertedHandRake = convertCurrency(handRake);
+                    const handClass = handResult > 0 ? 'positive' : handResult < 0 ? 'negative' : '';
+                    
+                    const bbSize = hand.limit / 100;
+                    const handBBs = handResult / bbSize;
+                    const handBBsFormatted = (handBBs < 0 ? '-' : handBBs > 0 ? '+' : '') + Math.abs(Math.round(handBBs)) + ' bb';
+                    const handBBClass = handBBs > 0 ? 'positive' : handBBs < 0 ? 'negative' : '';
+
+                    // Сверхуверенный поиск карт Hero
+                    let cardsDisplay = '—';
+                    const currentHero = document.getElementById('playerSelect').value;
+                    const currentAliases = AppState.dataManager.aliases || [];
+                    
+                    let rawCards = hand.heroCards;
+                    if (!rawCards && hand.players) {
+                        const pObj = hand.players.find(p => p.name === currentHero || currentAliases.includes(p.name));
+                        if (pObj) rawCards = pObj.cards;
+                    }
+
+                    // Вызов функции для генерации 4-цветных карт Hero (будет объявлена ниже)
+                    const cardsHTML = rawCards ? renderPokerCards(rawCards) : '—';
+
+                    const hDate = new Date(hand.startDate);
+                    hDate.setHours(hDate.getHours() + (AppState.dataManager.settings.timezoneOffset || 0));
+                    const timeStr = String(hDate.getHours()).padStart(2, '0') + ':' + 
+                                    String(hDate.getMinutes()).padStart(2, '0') + ':' + 
+                                    String(hDate.getSeconds()).padStart(2, '0');
+
+                    html += '<div class="session-item" style="background:transparent; border:none; box-shadow:none; cursor:default; font-size:12px; margin: 0; padding: 6px 12px;">';
+                    html += '<span style="text-align:left; color: var(--text-primary);">' + timeStr + '</span>';
+                    html += '<span style="text-align:center; color:var(--text-muted);">NL' + hand.limit + '</span>';
+                    html += '<span style="text-align:center;">' + cardsHTML + '</span>';
+                    html += '<span class="copy-hand-id" data-id="' + hand.gamecode + '" style="text-align:center; color: var(--text-primary); cursor:pointer;" title="Кликните, чтобы скопировать ID раздачи">' + hand.gamecode + '</span>';
+                    html += '<span class="session-bb ' + handBBClass + '" style="text-align:center;">' + handBBsFormatted + '</span>';
+                    html += '<span style="text-align:center; color: var(--text-secondary);">' + (handRake > 0 ? currencySymbol + convertedHandRake.toFixed(2) : '—') + '</span>';
+                    html += '<span class="session-result ' + handClass + '" style="text-align:right; font-weight:bold;">' + (convertedHandResult < 0 ? '-' : convertedHandResult > 0 ? '+' : '') + currencySymbol + Math.abs(convertedHandResult).toFixed(2) + '</span>';
+                    html += '</div>';
+                });
+
+                html += '</div>'; // Конец .session-hands-list
+            });
         }
 
+
+
         html += '</div>';
+
     }
 
     container.innerHTML = html;
@@ -1529,6 +1619,70 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
             toggleDay(dayKey);
         });
     });
+
+        // 🖱️ ОБРАБОТЧИК КЛИКА НА СЕССИЮ
+    container.querySelectorAll('.session-item').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+            // Защита: если кликнули по строчке самой раздачи внутри таблицы, ничего не сворачиваем
+            if (e.target.closest('.session-hands-list')) {
+                return;
+            }
+            
+            // Важно: останавливаем всплытие клика, чтобы одновременно не захлопнулся весь день!
+            e.stopPropagation(); 
+            
+            const sessionKey = this.dataset.sessionKey;
+            
+            // Если сессия уже была открыта — закрываем, иначе — открываем выбранную
+            if (AppState.expandedSession === sessionKey) {
+                AppState.expandedSession = null;
+            } else {
+                AppState.expandedSession = sessionKey;
+            }
+            
+            // Перерисовываем список дней, чтобы применились классы hidden/visible
+            updateDayList(getSelectedLimits()); 
+        });
+    });
+
+    // 🖱️ ОБРАБОТЧИК КЛИКОВ ПО ШАПКЕ РАЗДАЧ ДЛЯ СОРТИРОВКИ
+    container.querySelectorAll('.sort-hand-col').forEach(function(headerItem) {
+        headerItem.addEventListener('click', function(e) {
+            e.stopPropagation(); // Защита от закрытия сессии
+            const selectedCol = this.dataset.col;
+
+            if (AppState.handsSortCol === selectedCol) {
+                AppState.handsSortAsc = !AppState.handsSortAsc;
+            } else {
+                AppState.handsSortCol = selectedCol;
+                AppState.handsSortAsc = true;
+            }
+
+            // Перерисовываем список, чтобы применилась новая сортировка
+            updateDayList(getSelectedLimits());
+        });
+    });
+
+    // 📋 Слушатель кликов для мгновенного копирования ID раздачи в буфер
+    container.querySelectorAll('.copy-hand-id').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+            e.stopPropagation(); // Защита от срабатывания клика по сессии
+            const handId = this.dataset.id;
+            
+            navigator.clipboard.writeText(handId).then(function() {
+                showNotification('📋 ID раздачи ' + handId + ' скопирован!', 'success');
+            }).catch(function() {
+                // Резервный хак копирования, если заблокирован navigator.clipboard
+                const textarea = document.createElement('textarea');
+                textarea.value = handId;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showNotification('📋 ID раздачи ' + handId + ' скопирован!', 'success');
+            });
+        });
+    });
 }
 
 function toggleDay(dayKey) {
@@ -1604,6 +1758,12 @@ function toggleWidgetMode(type) {
 // ============================================================
 
 function initChart() {
+    // 🛡️ ОЧИСТКА ХОЛСТА: Если график уже существует в памяти, уничтожаем его перед повторным созданием
+    if (AppState.chart && typeof AppState.chart.destroy === 'function') {
+        AppState.chart.destroy();
+        AppState.chart = null;
+    }
+
     const ctx = document.getElementById('chartCanvas').getContext('2d');
 
     // ✅ Скрываем загрузку и показываем canvas
@@ -2153,6 +2313,130 @@ function formatDate(dateInput) {
     const year = d.getFullYear();
     
     return `${day}.${month}.${year}`;
+}
+
+// 🎨 ГЕНЕРАЦИЯ КРАСИВОЙ ПОКЕРНОЙ КАРТЫ С МАСЬТЮ (4 ЦВЕТА)
+function renderPokerCards(cardsStr) {
+    if (!cardsStr || cardsStr === '—') return '—';
+    
+    const normalized = typeof normalizeCards === 'function' ? normalizeCards(cardsStr) : cardsStr;
+    if (!normalized || normalized.length < 4) return cardsStr;
+
+    // Сразу задаем жесткие покерные цвета мастей, чтобы их не перебивал CSS темы
+    const suitColors = { s: '#2d3748', h: '#e53e3e', d: '#3182ce', c: '#38a169' };
+    const suitSymbols = { s: '♠', h: '♥', d: '♦', c: '♣' };
+    
+    const r1 = normalized.charAt(0);
+    const s1 = normalized.charAt(1).toLowerCase();
+    const r2 = normalized.charAt(2);
+    const s2 = normalized.charAt(3).toLowerCase();
+
+    const sym1 = suitSymbols[s1] || s1;
+    const sym2 = suitSymbols[s2] || s2;
+    const col1 = suitColors[s1] || 'inherit';
+    const col2 = suitColors[s2] || 'inherit';
+
+    return `<span class="poker-card">` +
+           `<span>${r1}</span><span style="color:${col1} !important; font-weight:800;">${sym1}</span> ` +
+           `<span>${r2}</span><span style="color:${col2} !important; font-weight:800;">${sym2}</span>` +
+           `</span>`;
+}
+
+
+// 📊 ЛОГИКА СОРТИРОВКИ ДЛЯ ВСЕХ ТИПОВ КОЛОНОК РАЗДАЧ
+function sortSessionHands(hands, column, isAsc) {
+    const sorted = [...hands];
+    
+    sorted.sort((a, b) => {
+        let valA, valB;
+        
+        switch (column) {
+            case 'limit':
+                valA = a.limit;
+                valB = b.limit;
+                break;
+                        case 'cards':
+                // 🃏 Сортировка по покерной силе руки (сначала по старшей карте, затем по младшей)
+                const currentHero = document.getElementById('playerSelect').value;
+                const currentAliases = (typeof AppState !== 'undefined' && AppState.dataManager) ? (AppState.dataManager.aliases || []) : [];
+
+                // Поиск карт для руки А (сначала в heroCards, если пусто — в массиве игроков)
+                let rawA = a.heroCards;
+                if (!rawA && a.players) {
+                    const pObjA = a.players.find(p => p.name === currentHero || currentAliases.includes(p.name));
+                    if (pObjA) rawA = pObjA.cards;
+                }
+                rawA = rawA || '';
+
+                // Поиск карт для руки B
+                let rawB = b.heroCards;
+                if (!rawB && b.players) {
+                    const pObjB = b.players.find(p => p.name === currentHero || currentAliases.includes(p.name));
+                    if (pObjB) rawB = pObjB.cards;
+                }
+                rawB = rawB || '';
+                
+                // Превращаем сырые "D8 DJ" в идеальный вид "Jd8d", где старшая карта ВСЕГДА впереди
+                const normA = typeof normalizeCards === 'function' ? normalizeCards(rawA) : rawA;
+                const normB = typeof normalizeCards === 'function' ? normalizeCards(rawB) : rawB;
+                
+                // Вытаскиваем символы рангов (для "Jd8d" это будет 'J' и '8')
+                const highA = normA && normA.length >= 4 ? normA.charAt(0) : '';
+                const lowA  = normA && normA.length >= 4 ? normA.charAt(2) : '';
+                
+                const highB = normB && normB.length >= 4 ? normB.charAt(0) : '';
+                const lowB  = normB && normB.length >= 4 ? normB.charAt(2) : '';
+                
+                // Функция-помощник: превращает покерную букву ('A', 'T'...) в число от 2 до 14
+                const getCardWeight = (r) => {
+                    if (!r) return 0;
+                    const searchKey = (r === 'T') ? '10' : r;
+                    return typeof RANK_ORDER !== 'undefined' ? (RANK_ORDER[searchKey] || 0) : 0;
+                };
+
+                // Вычисляем числовой вес карт от 2 до 14
+                const weightHighA = getCardWeight(highA);
+                const weightLowA  = getCardWeight(lowA);
+                const weightHighB = getCardWeight(highB);
+                const weightLowB  = getCardWeight(lowB);
+
+                // Считаем общий балл руки для точного сравнения (старшей карте даем огромный множитель)
+                valA = (weightHighA * 100) + weightLowA;
+                valB = (weightHighB * 100) + weightLowB;
+                break;
+
+
+
+
+            case 'gamecode':
+                valA = parseInt(a.gamecode) || 0;
+                valB = parseInt(b.gamecode) || 0;
+                break;
+            case 'bb':
+                valA = (a.result || 0) / (a.limit / 100);
+                valB = (b.result || 0) / (b.limit / 100);
+                break;
+            case 'rake':
+                valA = a.heroRake || 0;
+                valB = b.heroRake || 0;
+                break;
+            case 'profit':
+                valA = a.result || 0;
+                valB = b.result || 0;
+                break;
+            case 'time':
+            default:
+                valA = new Date(a.startDate).getTime();
+                valB = new Date(b.startDate).getTime();
+                break;
+        }
+
+        if (valA < valB) return isAsc ? -1 : 1;
+        if (valA > valB) return isAsc ? 1 : -1;
+        return 0;
+    });
+
+    return sorted;
 }
 
 // ============================================================

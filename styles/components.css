@@ -113,7 +113,7 @@
   height: 28px; 
   padding: 0 8px; /* Чуть увеличили боковые отступы, чтобы круглые края смотрелись гармонично */
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-secondary);
   background: var(--bg-input); 
   border: 1px solid var(--border-color);
@@ -1177,8 +1177,8 @@ input[type="number"] {
 /* ===== Day List Header ===== */
 .day-list-header {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  padding: 12px 16px;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 12px 12px;
   padding-right: 10px;
   background: var(--bg-secondary);
   border-radius: 12px 12px 0 0;
@@ -1261,8 +1261,8 @@ input[type="number"] {
 /* ===== Day Item ===== */
 .day-item {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  padding: 8px 16px;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 8px 12px;
   align-items: center;
   border-bottom: 1px solid var(--border-color);
   cursor: pointer;
@@ -1310,20 +1310,21 @@ input[type="number"] {
 
 .session-item {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   border-radius: 6px;
   padding: 5px 12px;
   align-items: center;
   background: var(--bg-primary);
   font-size: 13px;
-  margin: 4px 4px;
+  margin: 4px 0px;
   border-bottom: 1px solid var(--border-color);
   gap: 4px;
   min-width: 0;
+  transition: background 0.15s ease;
 }
 
 .session-item:hover {
-  background: var(--bg-hover);
+  background: var(--bg-secondary) !important;
 }
 
 .session-item > span {
@@ -1631,4 +1632,30 @@ body {
 #clearDateFilter {
     opacity: 0;
     transition: opacity var(--transition-speed) ease;
+}
+
+/* ===== Четырехцветная колода ===== */
+.poker-card {
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 700;
+  display: inline-flex;
+  gap: 1px;
+}
+.poker-suit {
+  font-weight: 800;
+}
+.poker-suit.s { color: #2d3748; } /* Пики (s) - Темно-серый/Черный */
+.poker-suit.h { color: #e53e3e; } /* Червы (h) - Красный */
+.poker-suit.d { color: #3182ce; } /* Бубны (d) - Синий */
+.poker-suit.c { color: #38a169; } /* Трефы (c) - Зеленый */
+
+/* Подсветка конкретных раздач при наведении, исключая интерактивную шапку раздач */
+.session-hands-list .session-item:not([style*="background:var(--bg-secondary)"]):hover {
+  background: rgba(0, 0, 0, 0.03) !important;
+  cursor: default;
+}
+
+/* Корректное отображение в тёмной теме, чтобы подсветка не сливалась */
+.dark-theme .session-hands-list .session-item:not([style*="background:var(--bg-secondary)"]):hover {
+  background: rgba(255, 255, 255, 0.04) !important;
 }
