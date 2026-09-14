@@ -2315,32 +2315,34 @@ function formatDate(dateInput) {
     return `${day}.${month}.${year}`;
 }
 
-// 🎨 ГЕНЕРАЦИЯ КРАСИВОЙ ПОКЕРНОЙ КАРТЫ С МАСЬТЮ (4 ЦВЕТА)
+// 🎨 ГЕНЕРАЦИЯ ПОКЕРНЫХ КАРТОЧЕК (ТОЛЬКО БУКВЫ НА ЦВЕТНОМ ФОНЕ, БЕЗ СИМВОЛОВ МАСТЕЙ)
 function renderPokerCards(cardsStr) {
     if (!cardsStr || cardsStr === '—') return '—';
     
     const normalized = typeof normalizeCards === 'function' ? normalizeCards(cardsStr) : cardsStr;
     if (!normalized || normalized.length < 4) return cardsStr;
 
-    // Сразу задаем жесткие покерные цвета мастей, чтобы их не перебивал CSS темы
+    // Цвета фонов для мастей (пики, червы, бубны, трефы)
     const suitColors = { s: '#2d3748', h: '#e53e3e', d: '#3182ce', c: '#38a169' };
-    const suitSymbols = { s: '♠', h: '♥', d: '♦', c: '♣' };
     
     const r1 = normalized.charAt(0);
     const s1 = normalized.charAt(1).toLowerCase();
     const r2 = normalized.charAt(2);
     const s2 = normalized.charAt(3).toLowerCase();
 
-    const sym1 = suitSymbols[s1] || s1;
-    const sym2 = suitSymbols[s2] || s2;
-    const col1 = suitColors[s1] || 'inherit';
-    const col2 = suitColors[s2] || 'inherit';
+    const bg1 = suitColors[s1] || '#718096';
+    const bg2 = suitColors[s2] || '#718096';
 
-    return `<span class="poker-card">` +
-           `<span>${r1}</span><span style="color:${col1} !important; font-weight:800;">${sym1}</span> ` +
-           `<span>${r2}</span><span style="color:${col2} !important; font-weight:800;">${sym2}</span>` +
-           `</span>`;
+    return `<div class="poker-cards-container">` +
+           `<span class="poker-card-item" style="background-color: ${bg1} !important;">` +
+           `<span class="card-rank">${r1}</span>` +
+           `</span>` +
+           `<span class="poker-card-item" style="background-color: ${bg2} !important;">` +
+           `<span class="card-rank">${r2}</span>` +
+           `</span>` +
+           `</div>`;
 }
+
 
 
 // 📊 ЛОГИКА СОРТИРОВКИ ДЛЯ ВСЕХ ТИПОВ КОЛОНОК РАЗДАЧ

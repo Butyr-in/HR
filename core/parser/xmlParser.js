@@ -172,33 +172,56 @@ function parseActions(gameNode) {
     return allActions;
 }
 
-// ===== ВЫЧИСЛЕНИЕ РЕЗУЛЬТАТА ИГРОКА =====
 function calculateResult(players, playerName) {
-    const player = players.find(p => p.name === playerName);
-    if (!player) return 0;
-    
-    const win = player.win;
-    const bet = player.bet;
-    
-    // Если игрок выиграл (или поделил банк)
-    if (win > 0) {
-        // Рейк берем строго у текущего игрока, а не у первого попавшегося через find()
-        const rake = player.rake || 0;
+    // Хелпер для очистки строк типа "€15.14" в чистые числа
+    const parseMoney = (val) => {
+        if (!val) return 0;
+        if (typeof val === 'number') return val;
+        return parseFloat(val.replace(/[^\d.-]/g, '')) || 0;
+    };
+
+    const targetPlayer = players.find(p => p.name === playerName);
+    if (!targetPlayer) return 0;
+
+    const targetWin = parseMoney(targetPlayer.win);
+    const targetBet = parseMoney(targetPlayer.bet);
+    const targetRake = parseMoney(targetPlayer.rakeamount || targetPlayer.rake);
+
+    // 1. Если игрок проиграл — он гарантированно теряет свой реальный бет
+    if (targetWin === 0) {
+        // Находим реальный размер банка, чтобы учесть возврат овербета
+        const totalWin = players.reduce((sum, p) => sum + parseMoney(p.win), 0);
+        const totalRake = players.reduce((sum, p) => sum + parseMoney(p.rakeamount || p.rake), 0);
+        const totalPot = totalWin + totalRake;
+        const totalBet = players.reduce((sum, p) => sum + parseMoney(p.bet), 0);
+        const uncalledBet = totalBet - totalPot;
+
+        const maxBet = Math.max(...players.map(p => parseMoney(p.bet)));
         
-        // Сумма bet всех оппонентов за столом
-        const opponentsBet = players
-            .filter(p => p.name !== playerName)
-            .reduce((sum, p) => sum + p.bet, 0);
-        
-        // Наше реальное вложение в этот банк
-        const ourInvested = win + rake - opponentsBet;
-        
-        return win - ourInvested;
-    } else {
-        // Если игрок проиграл
-        return -bet;
+        // Если этот проигравший ставил больше всех — вычитаем из его потерь uncalled bet
+        if (targetBet === maxBet && uncalledBet > 0) {
+            return -(targetBet - uncalledBet);
+        }
+        return -targetBet;
     }
+
+    // 2. Если игрок выиграл (TheWarrior1985)
+    // Находим максимальную ставку среди оппонентов
+    const maxOpponentBet = Math.max(
+        ...players.filter(p => p.name !== playerName).map(p => parseMoney(p.bet)), 
+        0
+    );
+    
+    // Эффективная ставка (TheWarrior1985 вложил ровно 7.56, так как у RedButyrin было 43.72)
+    const effectiveInvested = Math.min(targetBet, maxOpponentBet);
+
+    // Чистый профит: 15.14 - 7.56 = +7.58
+    const netProfit = targetWin - effectiveInvested;
+
+    // Грязный результат для DataManager: 7.58 + 1.08 = 8.66
+    return netProfit + targetRake;
 }
+
 
 // Добавляем флаг (по умолчанию false, т.е. европейский формат DD-MM-YYYY)
 function parseDateTime(dateStr, isAmericanDateFormat = false) {
