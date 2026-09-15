@@ -1204,12 +1204,6 @@ input[type="number"] {
   user-select: none;
 }
 
-/* Эффект при наведении на шапку */
-.day-list-header:hover {
-  background: var(--bg-hover);
-  cursor: pointer;
-}
-
 /* Подсветка колонок при наведении */
 .day-list-header span {
   padding: 4px 8px;
@@ -1329,7 +1323,6 @@ input[type="number"] {
   align-items: center;
   background: var(--bg-primary);
   font-size: 13px;
-  margin: 4px 0px;
   border-bottom: 1px solid var(--border-color);
   gap: 4px;
   min-width: 0;
