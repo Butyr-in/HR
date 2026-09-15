@@ -121,7 +121,7 @@ function parseGame(gameNode, isAmericanDateFormat = false) {
         const name = node.getAttribute('name');
         const win = cleanSum(node.getAttribute('win'));
         const bet = cleanSum(node.getAttribute('bet'));
-        const rake = cleanSum(node.getAttribute('rakeamount'));
+        const rake = cleanSum(node.getAttribute('rakeamount') || node.getAttribute('rake'));
         
         return {
             name: name,
@@ -173,7 +173,7 @@ function parseActions(gameNode) {
 }
 
 function calculateResult(players, playerName) {
-    // Хелпер для очистки строк типа "€15.14" в чистые числа
+    // Хелпер для очистки строк в чистые числа
     const parseMoney = (val) => {
         if (!val) return 0;
         if (typeof val === 'number') return val;
@@ -205,20 +205,20 @@ function calculateResult(players, playerName) {
         return -targetBet;
     }
 
-    // 2. Если игрок выиграл (TheWarrior1985)
+    // 2. Если игрок выиграл
     // Находим максимальную ставку среди оппонентов
     const maxOpponentBet = Math.max(
         ...players.filter(p => p.name !== playerName).map(p => parseMoney(p.bet)), 
         0
     );
     
-    // Эффективная ставка (TheWarrior1985 вложил ровно 7.56, так как у RedButyrin было 43.72)
+    // Эффективная ставка
     const effectiveInvested = Math.min(targetBet, maxOpponentBet);
 
-    // Чистый профит: 15.14 - 7.56 = +7.58
+    // Чистый профит
     const netProfit = targetWin - effectiveInvested;
 
-    // Грязный результат для DataManager: 7.58 + 1.08 = 8.66
+    // Грязный результат для DataManager:
     return netProfit + targetRake;
 }
 

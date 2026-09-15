@@ -1328,10 +1328,13 @@ function updateDayList(selectedLimits = [], filteredHands = null) {
         const resultClass = day.netResult > 0 ? 'positive' : day.netResult < 0 ? 'negative' : '';
         const avgLimit = calculateAverageLimitForDay(day);
         
-        const dayHandsArray = day.hands || [];
-        const dayRawRake = dayHandsArray.reduce((sum, h) => sum + (h.heroRake || 0), 0);
-        const convertedDayResult = convertCurrency(day.netResult);
-        const convertedDayRake = convertCurrency(dayRawRake);
+        // Код внутри цикла по дням (for (const day of filteredDays)):
+const dayHandsArray = day.hands || [];
+// Если вдруг по какой-то причине totalRake равен undefined, берем хелпер-расчет
+const dayRawRake = day.totalRake !== undefined ? day.totalRake : dayHandsArray.reduce((sum, h) => sum + (h.heroRake || 0), 0);
+
+const convertedDayResult = convertCurrency(day.netResult);
+const convertedDayRake = convertCurrency(dayRawRake);
         
         let startStr = formatDate(day.day);
         let endStr = '';
@@ -2081,41 +2084,42 @@ function updateChartByHands(hands) {
     const data = [];
     let cumulative = 0;
 
+    const hero = document.getElementById('playerSelect').value;
+    const aliases = AppState.dataManager.aliases || [];
+
     for (let i = 0; i < hands.length; i += chunkSize) {
         const chunk = hands.slice(i, i + chunkSize);
         const chunkResult = chunk.reduce((sum, h) => {
-            const hero = document.getElementById('playerSelect').value;
-            const aliases = AppState.dataManager.aliases || [];
             const player = h.players.find(p => p.name === hero || aliases.includes(p.name));
-            return sum + (player ? calculateResult(h.players, hero) : 0);
+            if (!player) return sum;
+
+            // 🎯 ИСПОЛЬЗУЕМ ВАШУ ФОРМУЛУ: Грязный профит минус рейк раздачи
+            const rake = player.rake || 0;
+            const netResult = calculateResult(h.players, hero) - rake;
+            
+            return sum + netResult;
         }, 0);
         
-            // Сначала накапливаем чистый итог в системной валюте (EUR)
-            if (AppState.chartType === 'bar') {
-                // Столбчатый график: показываем каждую точку отдельно
-                data.push(parseFloat(convertCurrency(chunkResult).toFixed(2)));
-            } else {
-                // Линейный график: накопленный результат
-                cumulative += chunkResult;
-                // Конвертируем в выбранную валюту ТОЛЬКО финальную точку перед выводом на график
-                data.push(parseFloat(convertCurrency(cumulative).toFixed(2)));
-            }
-
-            labels.push(String(i + 1));
+        if (AppState.chartType === 'bar') {
+            data.push(parseFloat(convertCurrency(chunkResult).toFixed(2)));
+        } else {
+            cumulative += chunkResult;
+            data.push(parseFloat(convertCurrency(cumulative).toFixed(2)));
         }
 
+        labels.push(String(i + 1));
+    }
+
     AppState.chart.data.labels = labels;
-    AppState.chart.data.datasets[0].data = data;
+    AppState.chart.data.datasets[0].data = data; // Индекс [0] на месте, график не пропадет
     AppState.chart.update();
 }
-
 
 function updateChartByDays(hands) {
     const days = {};
     const hero = document.getElementById('playerSelect').value;
     const aliases = AppState.dataManager.aliases || [];
     
-    // Синхронизируем дефолтное начало дня (6 утра) с DataManager
     const dayStartHour = AppState.dataManager.settings.dayStartHour !== undefined ? AppState.dataManager.settings.dayStartHour : 6;
 
     for (const hand of hands) {
@@ -2131,8 +2135,11 @@ function updateChartByDays(hands) {
             days[dayKey] = { result: 0, count: 0 };
         }
         
-        const result = calculateResult(hand.players, hero);
-        days[dayKey].result += result;
+        // 🎯 ИСПОЛЬЗУЕМ ВАШУ ФОРМУЛУ: Грязный профит минус рейк раздачи
+        const rake = player.rake || 0;
+        const netResult = calculateResult(hand.players, hero) - rake;
+
+        days[dayKey].result += netResult;
         days[dayKey].count++;
     }
 
@@ -2140,7 +2147,6 @@ function updateChartByDays(hands) {
     const labels = sortedDays.map((_, index) => String(index + 1)); 
     const data = [];
     
-    // Считаем нарастающий итог в базовой валюте, а конвертируем ТОЛЬКО при выводе
     let cumulative = 0;
     for (const d of sortedDays) {
         if (AppState.chartType === 'bar') {
@@ -2152,9 +2158,10 @@ function updateChartByDays(hands) {
     }
 
     AppState.chart.data.labels = labels;
-    AppState.chart.data.datasets[0].data = data;
+    AppState.chart.data.datasets[0].data = data; // Индекс [0] на месте, график не пропадет
     AppState.chart.update();
 }
+
 
 // ============================================================
 // ВАЛЮТЫ

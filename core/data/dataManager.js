@@ -440,91 +440,98 @@ class DataManager {
     }
 
 
-    getDays(settings = {}) {
-    const dayStartHour = settings.dayStartHour || this.settings.dayStartHour;
-    const sessionBreak = settings.sessionBreakMinutes || this.settings.sessionBreakMinutes;
-    const selectedLimits = settings.limits;
+        getDays(settings = {}) {
+        const dayStartHour = settings.dayStartHour || this.settings.dayStartHour;
+        const sessionBreak = settings.sessionBreakMinutes || this.settings.sessionBreakMinutes;
+        const selectedLimits = settings.limits;
+        const filteredHandsInput = settings.hands; // Используем переданные отфильтрованные руки, если есть
 
-    // ✅ ИСПРАВЛЕНО
-    const heroHands = this.hands.filter(hand => {
-        if (!hand || !hand.players) return false;
-        
-        const hasHero = hand.players.some(p => p.name === this.heroNick || this.aliases.includes(p.name));
-        if (!hasHero) return false;
-        
-        if (selectedLimits && selectedLimits.length > 0) {
-            const limitKey = 'NL' + hand.limit;
-            if (!selectedLimits.includes(limitKey)) {
-                return false;
+        // Используем либо переданный готовый массив рук, либо всю базу
+        const targetHands = filteredHandsInput || this.hands;
+
+        const heroHands = targetHands.filter(hand => {
+            if (!hand || !hand.players) return false;
+            
+            const hasHero = hand.players.some(p => p.name === this.heroNick || this.aliases.includes(p.name));
+            if (!hasHero) return false;
+            
+            if (selectedLimits && selectedLimits.length > 0) {
+                const limitKey = 'NL' + hand.limit;
+                if (!selectedLimits.includes(limitKey)) {
+                    return false;
+                }
             }
-        }
-        
-        return true;
-    });
-
-    // Сортируем руки по времени начала
-    heroHands.sort((a, b) => a.startDate - b.startDate);
-
-    const daysMap = {};
-
-    for (const hand of heroHands) {
-        const player = hand.players.find(p => p.name === this.heroNick || this.aliases.includes(p.name));
-        if (!player) continue;
-
-        const correctedDate = new Date(hand.startDate);
-        correctedDate.setHours(correctedDate.getHours() + (this.settings.timezoneOffset || 0));
-        const dayKey = this.getDayKey(correctedDate, dayStartHour);
-
-        if (!daysMap[dayKey]) {
-            daysMap[dayKey] = {
-                date: dayKey,
-                hands: [],
-                netResult: 0,
-                totalBBs: 0
-            };
-        }
-
-        const playerForRake = hand.players.find(p => p.name === this.heroNick || (this.aliases && this.aliases.includes(p.name)));
-        const rake = playerForRake ? (playerForRake.rake || 0) : 0;
-        const result = calculateResult(hand.players, this.heroNick) - rake;
-        const bbSize = hand.limit / 100;
-        const handBB = result / bbSize;
-
-        daysMap[dayKey].hands.push({
-            ...hand,
-            result: result,
-            heroRake: rake
+            
+            return true;
         });
-        daysMap[dayKey].netResult += result;
-        daysMap[dayKey].totalBBs += handBB;
+
+        // Сортируем руки по времени начала
+        heroHands.sort((a, b) => a.startDate - b.startDate);
+
+        const daysMap = {};
+
+        for (const hand of heroHands) {
+            const player = hand.players.find(p => p.name === this.heroNick || this.aliases.includes(p.name));
+            if (!player) continue;
+
+            const correctedDate = new Date(hand.startDate);
+            correctedDate.setHours(correctedDate.getHours() + (this.settings.timezoneOffset || 0));
+            const dayKey = this.getDayKey(correctedDate, dayStartHour);
+
+            if (!daysMap[dayKey]) {
+                daysMap[dayKey] = {
+                    date: dayKey,
+                    hands: [],
+                    netResult: 0,
+                    totalRake: 0, // 🔥 Инициализируем сбор рейка для каждого дня
+                    totalBBs: 0
+                };
+            }
+
+            const dirtyResult = calculateResult(hand.players, this.heroNick);
+            const rake = player.rake || 0;
+            const netResult = dirtyResult - rake; // Чистый профит раздачи
+            
+            const bbSize = hand.limit / 100;
+            const handBB = netResult / bbSize;
+
+            daysMap[dayKey].hands.push({
+                ...hand,
+                result: netResult,
+                heroRake: rake
+            });
+            daysMap[dayKey].netResult += netResult;
+            daysMap[dayKey].totalRake += rake; // 🔥 Суммируем рейк за день
+            daysMap[dayKey].totalBBs += handBB;
+        }
+
+        const result = [];
+        for (const dayKey in daysMap) {
+            const dayData = daysMap[dayKey];
+            const sortedHands = dayData.hands.slice().sort((a, b) => a.startDate - b.startDate);
+            const sessions = this.groupIntoSessions(sortedHands, sessionBreak, dayStartHour);
+            
+            const dayStartTime = sortedHands[0]?.startDate;
+            const dayEndTime = sortedHands[sortedHands.length - 1]?.startDate;
+
+            result.push({
+                day: dayKey,
+                hands: sortedHands,
+                sessions: sessions,
+                netResult: dayData.netResult,
+                totalRake: dayData.totalRake, // 🔥 Передаем собранный рейк наверх в UI
+                totalHands: sortedHands.length,
+                totalTime: sessions.reduce((sum, s) => sum + s.duration, 0),
+                totalBBs: dayData.totalBBs,
+                dayStartTime: dayStartTime,
+                dayEndTime: dayEndTime
+            });
+        }
+
+        result.sort((a, b) => a.day.localeCompare(b.day));
+        return result;
     }
 
-    const result = [];
-    for (const dayKey in daysMap) {
-        const dayData = daysMap[dayKey];
-        const sortedHands = dayData.hands.slice().sort((a, b) => a.startDate - b.startDate);
-        const sessions = this.groupIntoSessions(sortedHands, sessionBreak, dayStartHour);
-        
-        const dayStartTime = sortedHands[0]?.startDate;
-        const dayEndTime = sortedHands[sortedHands.length - 1]?.startDate;
-
-        result.push({
-            day: dayKey,
-            hands: sortedHands,
-            sessions: sessions,
-            netResult: dayData.netResult,
-            totalRake: dayData.totalRake,
-            totalHands: sortedHands.length,
-            totalTime: sessions.reduce((sum, s) => sum + s.duration, 0),
-            totalBBs: dayData.totalBBs,
-            dayStartTime: dayStartTime,
-            dayEndTime: dayEndTime
-        });
-    }
-
-    result.sort((a, b) => a.day.localeCompare(b.day));
-    return result;
-}
 
     getDayKey(date, dayStartHour) {
         const d = new Date(date.getTime());
