@@ -1246,7 +1246,7 @@ function updateWidgets(stats) {
     // ===== ПРОФИТ =====
 const result = stats.netResult || 0;
 const convertedResult = convertCurrency(result);
-const formattedResult = (convertedResult < 0 ? '-' : '') + currencySymbol + Math.abs(Math.round(convertedResult));
+const formattedResult = (convertedResult < 0 ? '-' : '') + currencySymbol + Math.abs(convertedResult).toFixed(2);
 
 // ✅ РАСЧЕТ ВЫИГРЫША В BB (с округлением до целых)
 const totalBBs = stats.totalBBs || 0;
@@ -1370,7 +1370,8 @@ const convertedDayRake = convertCurrency(dayRawRake);
         html += '<span class="hands-count">' + day.totalHands + '</span>';
         html += '<span class="time">' + timeDisplay + '</span>';
         html += '<span class="bb ' + bbClass + '">' + bbFormatted + '</span>';
-        html += '<span class="rake" style="color: var(--text-secondary); text-align: center;">' + currencySymbol + convertedDayRake.toFixed(2) + '</span>';
+        html += '<span class="rake" style="text-align: center;">' + currencySymbol + convertedDayRake.toFixed(2) + '</span>';
+
         html += '<span class="result ' + resultClass + '">' + (convertedDayResult < 0 ? '-' : '') + currencySymbol + Math.abs(convertedDayResult).toFixed(2) + '</span>';
         html += '</div>';
 
@@ -1470,14 +1471,14 @@ const convertedDayRake = convertCurrency(dayRawRake);
                                     String(hDate.getSeconds()).padStart(2, '0');
 
                     html += '<div class="session-item" style="background:transparent; border:none; box-shadow:none; cursor:default; font-size:12px; margin: 0; padding: 6px 12px;">';
-                    html += '<span style="text-align:left; color: var(--text-primary);">' + timeStr + '</span>';
-                    html += '<span style="text-align:center; color:var(--text-muted);">NL' + hand.limit + '</span>';
-                    html += '<span style="text-align:center;">' + cardsHTML + '</span>';
-                    html += '<span class="copy-hand-id" data-id="' + hand.gamecode + '" style="text-align:center; color: var(--text-primary); cursor:pointer;" title="Кликните, чтобы скопировать ID раздачи">' + hand.gamecode + '</span>';
-                    html += '<span class="session-bb ' + handBBClass + '" style="text-align:center;">' + handBBsFormatted + '</span>';
-                    html += '<span style="text-align:center; color: var(--text-secondary);">' + (handRake > 0 ? currencySymbol + convertedHandRake.toFixed(2) : '—') + '</span>';
-                    html += '<span class="session-result ' + handClass + '" style="text-align:right; font-weight:bold;">' + (convertedHandResult < 0 ? '-' : convertedHandResult > 0 ? '+' : '') + currencySymbol + Math.abs(convertedHandResult).toFixed(2) + '</span>';
-                    html += '</div>';
+html += '<span style="text-align:left;">' + timeStr + '</span>';
+html += '<span style="text-align:center;">NL' + hand.limit + '</span>';
+html += '<span style="text-align:center;">' + cardsHTML + '</span>';
+html += '<span class="copy-hand-id" data-id="' + hand.gamecode + '" style="text-align:center; cursor:pointer;" title="Кликните, чтобы скопировать ID раздачи">' + hand.gamecode + '</span>';
+html += '<span class="session-bb ' + handBBClass + '" style="text-align:center;">' + handBBsFormatted + '</span>';
+html += '<span style="text-align:center;">' + (handRake > 0 ? currencySymbol + convertedHandRake.toFixed(2) : '—') + '</span>';
+html += '<span class="session-result ' + handClass + '" style="text-align:right;">' + (convertedHandResult < 0 ? '-' : convertedHandResult > 0 ? '+' : '') + currencySymbol + Math.abs(convertedHandResult).toFixed(2) + '</span>';
+html += '</div>';
                 });
 
                 html += '</div>'; // Конец .session-hands-list
@@ -1925,15 +1926,13 @@ function updateChart() {
         updateChartByDays(filteredHands);
     }
 
-    const totalResult = filteredHands.reduce((sum, h) => {
-        const hero = document.getElementById('playerSelect').value;
-        const aliases = AppState.dataManager.aliases || [];
-        const player = h.players.find(p => p.name === hero || aliases.includes(p.name));
-        return sum + (player ? calculateResult(h.players, hero) : 0);
-    }, 0);
-    
-    const convertedTotalResult = convertCurrency(totalResult);
-    const dataValues = AppState.chart.data.datasets[0].data;
+    // Переносим получение dataValues НАВЕРХ, перед проверкой цвета
+const dataValues = AppState.chart.data.datasets[0].data;
+
+// Финальный чистый результат — это просто самая последняя точка, отрисованная на графике
+const finalChartValue = dataValues.length > 0 ? dataValues[dataValues.length - 1] : 0;
+
+const convertedTotalResult = finalChartValue; // Значение уже сконвертировано внутри функций chunk'ов
     
     if (AppState.chartType === 'bar') {
         // Столбчатый график: красим строго по значению (выше нуля — зеленый, ниже — красный)

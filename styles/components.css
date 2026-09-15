@@ -359,10 +359,6 @@
   background: var(--text-muted);
 }
 
-.day-item {
-  border-bottom: 1px solid var(--border-color);
-}
-
 .day-item:last-child {
   border-radius: 0 0 12px 12px;
   border-bottom: none;
@@ -376,7 +372,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
+  padding: 6px 16px;
   cursor: pointer;
   transition: background var(--transition-speed);
 }
@@ -385,8 +381,8 @@
 }
 
 .day-date {
-  font-weight: 600;
-  font-size: 15px;
+  font-weight: normal;
+  font-size: 14px;
 }
 
 .day-stats {
@@ -408,14 +404,26 @@
   background: var(--bg-hover);
 }
 
-.session-time {
+/* 1. Ровный серый цвет для всех базовых колонок сессии, кроме блайндов и профита */
+.session-item > span:not(.session-bb):not(.session-result) {
   color: var(--text-secondary);
 }
+
+/* 2. Единый серый стиль для колонок внутри списка раздач (Время, Лимит, ID, Рейк) */
+.session-hands-list .session-item > span:not(.session-bb):not(.session-result) {
+  color: var(--text-secondary);
+}
+
+/* 3. Оставляем карты Hero видимыми и контрастными */
+.session-hands-list .session-item > span:has(.poker-cards-container) {
+  color: inherit;
+}
+
 .session-hands {
   color: var(--text-muted);
 }
 .session-result {
-  font-weight: 600;
+  font-weight: normal;
 }
 
 /* ===== Footer ===== */
@@ -1262,7 +1270,8 @@ input[type="number"] {
 .day-item {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  padding: 8px 12px;
+  padding: 5px 12px;
+  font-size: 14px;
   align-items: center;
   border-bottom: 1px solid var(--border-color);
   cursor: pointer;
@@ -1295,12 +1304,16 @@ input[type="number"] {
     font-size: 12px;
 }
 
-/* Выделение выбранного дня */
+/* Выделение выбранного дня: меняем только фон всей строки */
 .day-item.active {
   background: var(--bg-hover);
-  border-left: 4px solid var(--color-accent);
-  padding-left: 12px;
 }
+
+/* Делаем жирными ВСЕ колонки строки дня, но запрещаем шрифту проваливаться в раздачи */
+.day-item.active > span {
+  font-weight: 600;
+}
+
 
 /* ===== Day Sessions ===== */
 .day-sessions {
@@ -1342,9 +1355,7 @@ input[type="number"] {
   text-align: right;
 }
 
-/* Принудительно красим в серый цвет второй элемент (Лимит) и четвертый элемент (Длительность) */
-.session-item > span:nth-child(2),
-.session-item > span:nth-child(4) {
+.session-item > span:not(.session-bb):not(.session-result) {
   color: var(--text-secondary);
 }
 
@@ -1356,9 +1367,6 @@ input[type="number"] {
   color: var(--text-muted);
 }
 
-.session-result {
-  font-weight: 600;
-}
 
 #aliasInput {
     width: 100%;
