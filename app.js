@@ -106,6 +106,10 @@ if (!document.querySelector('.chart-btn.active')) {
         document.getElementById('currentYear').textContent = new Date().getFullYear();
         console.log('✅ Poker Hand Analyzer initialized successfully!');
         showNotification('✅ Приложение готово к работе', 'success');
+
+        // 🔄 АВТООБНОВЛЕНИЕ: Стягиваем свежие курсы валют при каждом открытии/обновлении страницы
+        console.log('⏳ Страница загружена/обновлена. Запуск принудительного обновления валют...');
+        fetchExchangeRates(); 
         
     } catch (error) {
         console.error('❌ Критическая ошибка инициализации:', error);
@@ -698,26 +702,43 @@ if (savedOffset !== undefined) {
     }, 50);
 
     // Обработчик клика без дубликатов
+        // Найдите этот блок в setupEvents() и замените на обновленный:
     document.getElementById('clearDateFilter').addEventListener('click', function() {
         AppState.dateStart = null;
         AppState.dateEnd = null;
+        AppState.expandedDay = null; // ✅ Очищаем развернутый день при сбросе
         
-        // Сбрасываем внутреннее состояние виджета календаря Flatpickr
-        const dateInput = document.getElementById('dateRange');
-        const fp = dateInput._flatpickr;
-        if (fp) {
-            fp.clear(); // Сначала очищаем календарь
-        }
+        // Восстанавливаем дефолтный режим отображения
+        const prevView = localStorage.getItem('pokerPreviousView') || 'days';
+        AppState.currentView = prevView;
+        localStorage.setItem('pokerCurrentView', prevView);
 
-        dateInput.value = ''; 
-        dateInput.placeholder = "Выберите период"; // <-- Ставим строго после fp.clear()
-        
         localStorage.removeItem('pokerDateStart');
         localStorage.removeItem('pokerDateEnd');
+        localStorage.removeItem('pokerDateStartBak');
+        localStorage.removeItem('pokerDateEndBak');
+        localStorage.removeItem('pokerPreviousView');
+        
+        const dateInput = document.getElementById('dateRange');
+        const fp = dateInput?._flatpickr;
+        if (fp) {
+            fp.clear(); 
+        }
+
+        if (dateInput) {
+            dateInput.value = ''; 
+            dateInput.placeholder = "Выберите период";
+        }
+        
+        document.querySelectorAll('.chart-btn').forEach(function(b) {
+            b.classList.remove('active');
+            if (b.dataset.mode === AppState.currentView) b.classList.add('active');
+        });
         
         updateChart();
         updateUI();
     });
+
 }
 
 // Обработка изменения чекбоксов лимитов
@@ -1156,15 +1177,20 @@ function closeAllModals() {
 function updateUI() {
     const selectedLimits = getSelectedLimits();
     
-    // Получаем финальный массив рук, отфильтрованный по датам, лимитам и игроку
-    const filteredHands = filterHands(AppState.dataManager.hands);
-    
-    // Считаем статистику для виджетов по отфильтрованным рукам
-    const stats = AppState.dataManager.getStats({ hands: filteredHands });
+    // 1. Получаем раздачи для виджетов и графика (они учитывают клик по дну)
+    const filteredHandsForWidgets = filterHands(AppState.dataManager.hands);
+    const stats = AppState.dataManager.getStats({ hands: filteredHandsForWidgets });
     updateWidgets(stats);
     
-    // Передаем отфильтрованные руки в функцию отрисовки списка дней
-    updateDayList(selectedLimits, filteredHands);
+    // 2. 🎯 Для построения списка дней НАМ НЕ НУЖЕН фильтр клика по дню.
+    // Мы временно подменяем AppState.expandedDay на null, чтобы получить полный список дней по календарю.
+    const currentExpanded = AppState.expandedDay;
+    AppState.expandedDay = null; 
+    const handsForDayList = filterHands(AppState.dataManager.hands);
+    AppState.expandedDay = currentExpanded; // Возвращаем обратно
+    
+    // Отрисовываем полный список дней, внутри которого выбранный день будет раскрыт
+    updateDayList(selectedLimits, handsForDayList);
 }
 
 
@@ -1689,14 +1715,46 @@ html += '</div>';
     });
 }
 
+// ============================================================
+// МОДИФИЦИРОВАННАЯ ФУНКЦИЯ КЛИКА ПО ДНЮ
+// ============================================================
 function toggleDay(dayKey) {
     if (AppState.expandedDay === dayKey) {
+        // Если день уже был открыт — сворачиваем его
         AppState.expandedDay = null;
+        
+        // Восстанавливаем режим графика, который был до этого
+        const previousView = localStorage.getItem('pokerPreviousView') || 'days';
+        AppState.currentView = previousView;
+        localStorage.setItem('pokerCurrentView', previousView);
+        localStorage.removeItem('pokerPreviousView');
     } else {
+        // Если открываем новый день, запоминаем текущий режим отображения (если еще не запомнен)
+        if (!AppState.expandedDay) {
+            localStorage.setItem('pokerPreviousView', AppState.currentView);
+        }
+        
         AppState.expandedDay = dayKey;
+        
+        // Принудительно переключаем график в режим "По раздачам"
+        AppState.currentView = 'hands';
+        localStorage.setItem('pokerCurrentView', 'hands');
     }
-    updateDayList(getSelectedLimits());
+
+    // Синхронизируем активные классы у кнопок графика
+    document.querySelectorAll('.chart-btn').forEach(function(b) {
+        b.classList.remove('active');
+        if (b.dataset.mode === AppState.currentView) {
+            b.classList.add('active');
+        }
+    });
+
+    // Полностью обновляем интерфейс, виджеты и график
+    updateUI();
+    updateChart();
 }
+
+
 
 // ============================================================
 // РАСЧЁТ СРЕДНЕГО ЛИМИТА
@@ -1800,7 +1858,7 @@ function initChart() {
             responsive: true,
             maintainAspectRatio: false,
             animation: {
-                duration: 500,
+                duration: 1000,
                 easing: 'easeOutQuart'
             },
             interaction: {
@@ -1811,7 +1869,7 @@ function initChart() {
             transitions: {
                 active: {
                     animation: {
-                        duration: 500,
+                        duration: 1000,
                         easing: 'easeOutQuad'
                     }
                 }
@@ -2014,31 +2072,38 @@ function filterHands(hands) {
     const offset = AppState.dataManager.settings.timezoneOffset || 0;
     const dayStartHour = AppState.dataManager.settings.dayStartHour || 6;
 
-    // 1. Фильтр по начальной дате (строковое сравнение ключей)
-    if (AppState.dateStart) {
+    // 🎯 ЕСЛИ КЛИКНУЛИ ПО ДНЮ: изолируем раздачи этого дня для графика и виджетов
+    if (AppState.expandedDay) {
         filtered = filtered.filter(h => {
             const correctedDate = new Date(h.startDate);
             correctedDate.setHours(correctedDate.getHours() + offset);
             const dayKey = AppState.dataManager.getDayKey(correctedDate, dayStartHour);
-            return dayKey >= AppState.dateStart;
+            return dayKey === AppState.expandedDay;
         });
-    }
-
-    // 2. Фильтр по конечной дате (строковое сравнение ключей)
-    if (AppState.dateEnd) {
-        filtered = filtered.filter(h => {
-            const correctedDate = new Date(h.startDate);
-            correctedDate.setHours(correctedDate.getHours() + offset);
-            const dayKey = AppState.dataManager.getDayKey(correctedDate, dayStartHour);
-            return dayKey <= AppState.dateEnd;
-        });
+    } else {
+        // ОБЫЧНАЯ ФИЛЬТРАЦИЯ ПО КАЛЕНДАРЮ (работает, когда ни один день не развернут)
+        if (AppState.dateStart) {
+            filtered = filtered.filter(h => {
+                const correctedDate = new Date(h.startDate);
+                correctedDate.setHours(correctedDate.getHours() + offset);
+                const dayKey = AppState.dataManager.getDayKey(correctedDate, dayStartHour);
+                return dayKey >= AppState.dateStart;
+            });
+        }
+        if (AppState.dateEnd) {
+            filtered = filtered.filter(h => {
+                const correctedDate = new Date(h.startDate);
+                correctedDate.setHours(correctedDate.getHours() + offset);
+                const dayKey = AppState.dataManager.getDayKey(correctedDate, dayStartHour);
+                return dayKey <= AppState.dateEnd;
+            });
+        }
     }
 
     // 3. Фильтр по лимитам (чекбоксы)
     const limitContainer = document.getElementById('limitFilter');
     const allCheckbox = limitContainer ? limitContainer.querySelector('input[value="all"]') : null;
     
-    // Если контейнера или чекбокса еще нет на экране, пропускаем фильтрацию лимитов
     if (allCheckbox && !allCheckbox.checked) {
         const checkedLimits = Array.from(limitContainer.querySelectorAll('input[type="checkbox"]:checked'))
             .map(cb => cb.value)
@@ -2062,6 +2127,7 @@ function filterHands(hands) {
 
     return filtered;
 }
+
 
 
 function getSelectedLimits() {
@@ -2207,32 +2273,54 @@ function saveCurrencyRates() {
 
 async function fetchExchangeRates() {
     const btn = document.getElementById('updateRatesBtn');
-    btn.textContent = 'Загрузка...';
-    btn.disabled = true;
+    if (btn) {
+        btn.textContent = 'Загрузка...';
+        btn.disabled = true;
+    }
 
     try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
         const data = await response.json();
         
-        if (data.rates) {
+        if (data && data.rates) {
             const usd = data.rates.USD || 1.10;
             const rub = data.rates.RUB || 90.00;
             
-            // ✅ Принудительно с точкой
-            document.getElementById('usdRate').value = usd.toFixed(2);
-            document.getElementById('rubRate').value = rub.toFixed(2);
+            // 🛡️ БЕЗОПАСНЫЙ СЧИТЫВАТЕЛЬ: берем сырой текст из инпутов
+            const rawUsd = document.getElementById('usdRate')?.value || '';
+            const rawRub = document.getElementById('rubRate')?.value || '';
             
+            // Переводим новые серверные котировки в строковый вид "0.00"
+            const newUsdString = usd.toFixed(2);
+            const newRubString = rub.toFixed(2);
+            
+            // 🔍 СРАВНЕНИЕ: Проверяем, изменились ли котировки относительно того, что на экране.
+            // Если поля были пустые (""), то isChanged автоматически станет true и покажет баннер при старте.
+            const isChanged = (newUsdString !== rawUsd) || (newRubString !== rawRub);
+            
+            // Принудительно записываем новые курсы в инпуты с точкой
+            if (document.getElementById('usdRate')) document.getElementById('usdRate').value = newUsdString;
+            if (document.getElementById('rubRate')) document.getElementById('rubRate').value = newRubString;
+            
+            // Вызываем стандартное сохранение настроек
             saveCurrencyRates();
-            showNotification('✅ Курсы валют обновлены', 'success');
+            
+            // ✅ ИСПРАВЛЕНО: Присылаем уведомление ТОЛЬКО если курс действительно сдвинулся
+            if (isChanged) {
+                showNotification('✅ Курсы валют обновлены', 'success');
+            }
         }
     } catch (error) {
         console.error('Error fetching rates:', error);
         showNotification('❌ Ошибка получения курсов', 'error');
     } finally {
-        btn.textContent = 'Обновить';
-        btn.disabled = false;
+        if (btn) {
+            btn.textContent = 'Обновить';
+            btn.disabled = false;
+        }
     }
 }
+
 
 // ============================================================
 // УТИЛИТЫ
